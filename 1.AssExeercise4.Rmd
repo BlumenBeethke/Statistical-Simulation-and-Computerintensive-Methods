@@ -30,7 +30,7 @@ dim(X)
 
 ## Compute the covariance matrix using cov(X)
 
-We compute the `covariance matrix` of X.
+We compute the `covariance matrix` of 'X' as requested.
 
 ```{r covariance}
 # Sample covariance matrix of X (divisor n - 1)
@@ -40,7 +40,7 @@ Cov_X <- cov(X)
 print(Cov_X)
 ```
 
-`cov()` uses the divisor n - 1 (Bessel's correction).
+`cov()` uses the divisor $n - 1$ (Bessel's correction).
 
 The `covariance matrix` is symmetric and the diagonal entries are the variances. 
 The variances of x1 and x2 are about 1.013. That is the sample variance of u, which differs slightly from 1 with 5000 draws. This can be attributed to a *statistical error*.
@@ -51,7 +51,7 @@ This matters here because x1 and x2 differ only through the noise term. Its vari
 
 ## Compute the correlation between x1 and x2
 
-We compute the `correlation` between x1 and x2.
+We compute the `correlation` between `x1` and `x2`.
 
 ```{r correlation}
 # Correlation of x1 and x2
@@ -64,11 +64,11 @@ print(Corr_X, digits = 15)
 print(1 - Corr_X)
 ```
 
-The correlation of x1 and x2 is 0.999999995. R prints it as 1 with the default 7 digits, but the difference from 1 is not zero.
+The correlation of `x1` and `x2` is `0.999999995`. `R` prints it as `1` with the default 7 digits, but the difference from `1` is not zero.
 
 ## Compute the eigenvalues of the covariance matrix
 
-Next we compute the `eigenvalues` of the `covariance matrix` of X.
+Next, we compute the `eigenvalues` of the `covariance matrix` of X.
 
 ```{r eigenvalues}
 # Eigenvalues of `covariance matrix` of X
@@ -79,7 +79,7 @@ e$values # numeric vector: 2.025956e+00 4.992561e-09
 
 ## Covariance using the algebraic one-pass identity Cov(X,Y) = E(XY) − E(X)E(Y), with sample corrections as needed
 
-Here we compute the covariance matrix with the algebraic one-pass identity
+Here we compute the covariance matrix with the algebraic one-pass identity,
 
 $$ \mathrm{Cov}(X, Y) = E(XY) - E(X)\,E(Y) $$
 
@@ -98,7 +98,7 @@ print(one_pass_cov, digits = 15)
 
 Here `crossprod(X) / n` gives $E(x_i x_j)$ for all pairs of columns and `tcrossprod(m)` gives $E(x_i)E(x_j)$ from the column means. Their difference is the sample covariance matrix according to the one-pass identity. Finally we multiply by $n/(n-1)$ as sample correction.
 
-The entries range from about 14 to 50 instead of 1.013. 
+The entries range from about `14` to `50` instead of `1.013`. 
 
 ## Compare the resulting covariance matrix with cov(X)
 
@@ -115,8 +115,8 @@ print(abs_err)
 print(rel_err)
 ```
 
-The absolute errors and the relative errors range from about 13 up to 49.
-**The one-pass result differs completely from `cov(X)`.** The cause is *numerical cancellation*, since E(XY) and E(X)E(Y) are both around 1e16. The one-pass identity is therefore unusable for data with a large offset.
+The absolute errors and the relative errors range from about `13` up to `49`.
+**The one-pass result differs completely from `cov(X)`.** The cause is *numerical cancellation*, since E(XY) and E(X)E(Y) are both around `1e16`. The one-pass identity is therefore unusable for data with a large offset.
 
 ## Repeat the calculation after centring both variables first
 

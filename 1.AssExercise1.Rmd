@@ -143,7 +143,7 @@ the two big terms is as large as their difference. In lecture we call this effec
 the leading digits cancel when two nearly equal numbers are subtracted, and only rounding
 noise remains. It is a numerical problem, not a statistical problem!
 The data and the statistic are the same, only the way of computing it is unstable. 
-In my results the nrelative error of the one-pass formula grows from $1.4 \cdot 10^{-7}$ at $a = 10^4$ to $3.77$ at $a = 10^8$.
+In my results the relative error of the one-pass formula grows from $1.4 \cdot 10^{-7}$ at $a = 10^4$ to $3.77$ at $a = 10^8$.
 
 At $a = 10^{14}$ even `var()` and the two-pass algorithm are slightly off with a relative error of around $6.6 \cdot 10^{-6}$. 
 Here the loss happens already when $a + z_i$ is formed, because doubles near $10^{14}$ are about $0.016$ apart.
