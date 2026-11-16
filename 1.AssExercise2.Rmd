@@ -1,0 +1,77 @@
+---
+title: "Exercise 2 - A probability that disappears"
+output: github_document
+---
+
+```{r setup}
+x <- c(5, 8, 10, 20, 30, 40)
+```
+
+## Compute the upper-tail probability in three different ways
+
+```{r upper tail}
+# Upper-tail probability in three different ways
+# via complement
+p1 <- 1 - pnorm(x)
+# direct
+p2 <- pnorm(x, lower.tail = FALSE)
+# log-scale
+lp <- pnorm(x, lower.tail = FALSE, log.p = TRUE) 
+
+# Collect the three results in a data frame
+print(data.frame(x, p1, p2, lp), digits = 5)
+```
+
+## Identify where the first expression begins to give a misleading answer
+
+In this section we analyse the first expression, which computes the upper tail as $1 - P(Z \le x)$.
+
+As a reference we use p2.
+
+```{r analysis-of-p1}
+# Determine relative error
+rel_err <- abs(p1 - p2) / p2
+# Collect the results in a data frame
+print(data.frame(x, p1, p2, rel_err), digits = 5)
+
+x[which(rel_err > 0.05)[1]]
+x[which(p1 == 0)[1]]
+```
+
+`p1` and `p2` still agrees at x = 5. At x = 8 it is off by about 7%, and from x = 10 on it returns exactly 0.
+
+## Explain why `1 - pnorm(x)` can fail even when `pnorm(x)` itself is accurately computed
+
+Subtracting two nearly equal numbers is where precision is lost. This destroys the accuracy that `pnorm(x)` has. 
+
+`pnorm(x, lower.tail = FALSE)` avoids this because it computes the tail directly, with no subtraction, so the relative accuracy is preserved.
+
+## Why `1 - pnorm(x)` can fail even when `pnorm(x)` is accurate
+
+Doubles carry about 16 significant digits, so every stored number has a relative rounding error of about $10^{-16}$. For relatively large $x$, `pnorm(x)` is very close to 1 and doubles near 1 are spaced only about $1.1 \cdot 10^{-16}$ apart. `pnorm(x)` is therefore computed with a small relative error, but it carries an absolute error of that size, and the tiny upper tail $P(Z > x)$ is the part of the number that falls below this spacing.
+
+The subtraction $1 - \Phi(x)$ then removes the leading digits, which are all equal to 1, and what remains is mostly rounding error. This is cancellation: the absolute error stays the same, while the result is much smaller, so its relative error becomes large. At $x = 8$ the true tail is $6.2 \cdot 10^{-16}$, only a few units of the spacing, and `1 - pnorm(8)` returns $6.66 \cdot 10^{-16} = 6 \cdot 1.11 \cdot 10^{-16}$, about 7% too large. Once the tail is below the spacing, `pnorm(x)` rounds to exactly 1 and the result is 0, as for $x \ge 10$.
+
+`pnorm(x, lower.tail = FALSE)` avoids the problem because it computes the tail directly, without subtracting from 1, so the relative accuracy is kept.
+
+## GitHub Documents
+
+This is an R Markdown format used for publishing markdown documents to GitHub. When you click the **Knit** button all R code chunks are run and a markdown file (.md) suitable for publishing to GitHub is generated.
+
+## Including Code
+
+You can include R code in the document as follows:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

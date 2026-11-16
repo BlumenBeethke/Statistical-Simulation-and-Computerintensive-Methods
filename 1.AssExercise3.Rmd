@@ -1,0 +1,101 @@
+---
+title: "Exercise 3 — Comparing two models without computing their likelihoods"
+output: github_document
+---
+
+## Consider the following setup by task:
+
+```{r setup}
+set.seed(2)
+y <- rbinom(5000, size = 1, prob = 0.03)
+p1 <- 0.03
+p2 <- 0.035
+```
+
+## Compute L(p1) and L(p2)
+
+In this step we define a function for the Bernoulli likelihood 
+$$L(p) = \prod_{i=1}^{n} p^{y_i} (1 - p)^{1 - y_i}$$ 
+and compute its values for $p1$ and $p2$.
+
+```{r likelihoods}
+L <- function(p){
+    prod(p^y * (1 - p)^(1 - y))
+}
+
+L_p1 <- L(p1)
+
+L_p2 <- L(p2)
+
+c(L_p1, L_p2)
+```
+
+Result is 0 for both $L_p1$ and $L_p2$.
+
+## Compute the corresponding log-likelihoods to L(p1) and L(p2)
+
+In this step we define a function the corresponding log-likelihood $$LL(p)= \sum_{i=1}^{n} \left[ y_i \log p + (1 - y_i) \log(1 - p) \right]$$ and compute its values for $p1$ and $p2$.
+
+```{r log-likelihoods}
+l <- function(p) {
+  sum(y * log(p) + (1 - y) * log(1 - p))
+}
+
+l_p1 <- l(p1)
+
+l_p2 <- l(p2)
+
+c(l_p1, l_p2)
+```
+
+Result is $-750.1850$ for $p1$ and $-748.6221$ for $p2$.
+
+## Which model is preferred according to the direct likelihoods? Which is preferred according to the log-likelihoods?
+
+```{r comparison}
+L(p1) == L(p2)
+
+l(p1) > l(p2)
+```
+
+Using the direct likelihoods, no model can be preferred. Both $L(p_1)$ and $L(p_2)$ are numerically equal to 0, because the product of 5000 probabilities, each smaller than 1, falls below the smallest positive number R can represent. The comparison `L(p1) > L(p2)` therefore returns `FALSE`, but this only reflects the tie $0 = 0$ and not a difference between the models.
+
+Using the log-likelihoods, model 2 ($p_2 = 0.035$) is preferred, since $\ell(p_2) > \ell(p_1)$. The log-likelihoods are sums of 5000 moderate terms and stay in a well-behaved numerical range, so they can be compared directly.
+
+The preference for $p_2$ does not contradict the data-generating value $p = 0.03$. With a sample proportion of $\bar{y} = 0.0344$, the data lie closer to $p_2$ than to $p_1$. The two log-likelihoods are equal at $\bar{y} \approx 0.0324$, so any sample with a larger proportion favors $p_2$. The difference is small, and it comes from sampling noise.
+
+## Compute the log-likelihood difference l(p1) - l(p2). Explain why this quantity can be more useful than either likelihood itself.
+
+```{r log-likelihood difference}
+log_ratio <- l(p1) - l(p2)
+
+print(log_ratio)
+```
+
+Underflow
+
+## Compute the likelihood ratio L(p1)/L(p2) in a numerically stable way using the log-likelihoods.
+
+In this part we compute the ratio L(p1)/L(p2), but computed through the log-likelihoods instead of the direct likelihoods, since both L(p1) and L(p2) are numerically 0, so l1 / l2 gives 0/0 = NaN. On the log scale, the two values are around $-750$ and can be subtracted without loss.
+
+By log rule of calculation, we know: log(a/b) = log(a) − log(b).
+
+So, the ratio can be rewritten as: L(p1)/L(p2) = exp(log(L(p1)) − log(L(p2))) = exp(l(p1) − l(p2)).
+
+```{r likelihood ratio}
+ratio <- exp(l(p1) - l(p2))
+
+c(log_ratio, ratio)
+```
+
+The ratio is about 0.2095, so the data are less likely under $p_1$ than under $p_2$. Equivalently, $p_2$ is about 5 times as likely as $p_1$. This agrees with the preference for $p_2$ from the log-likelihoods from the log-likelihood difference.
+
+## Why is this issue especially important in Bayesian computation, maximum likelihood estimation, and sequential analysis?
+
+In all three settings, the likelihood is a product of many factors smaller than 1. With growing n, the product shrinks toward 0 and eventually underflows, as seen above. So in all of three subjects *underflow* must be taken into account
+
+* In Bayesian computation, the likelihood is multiplied by the prior distribution and then normalized. So Bayesian computation often requires multiplying many small probabilities together and dividing by a tiny normalizing constant. The resulting product becomes so tiny that it falls below the smallest representable number in a computer's floating-point format, gets rounded down to zero and *numerical underflow* occurs.
+
+* In maximum likelihood estimation, the joint likelihood of a dataset is computed by multiplying the individual probabilities of all observed data points. This process requires multiplying many small numbers between zero and one together, especially as the sample size grows. The resulting product becomes so tiny that it falls below the smallest representable number in a computer's floating-point format, gets rounded down to zero and numerical underflow occurs. This can make it impossible to find the maximum via optimization.. A sum of log terms is numerically stable, and its gradient is easier to compute than that of a long product.
+
+* In sequential analysis, each new observation adds one more factor by continuously updating with each new incoming observation. This iterative process requires multiplying small probabilities together as the sequence lengthens over time. The resulting product becomes so tiny that *numerical underflow* occurs. Causing the sequential tracking or decision rule to break down.
