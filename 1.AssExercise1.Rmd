@@ -1,29 +1,44 @@
 ---
 title: "Exercise 1 — Variance after a change of origin"
+date: "`r Sys.Date()`"
+author: "Lennart Bethke"
 output: github_document
+echo: TRUE
+toc: true
 ---
 
-In this exercise we work with the variance and two algorithms for the sample variance of generated random samples.
-Further we compare the results and analyse typical numerical problems.
+In this exercise, we work with the `variance` and `two algorithms for the sample variance` of generated random samples.
+Further, we compare the results and analyse typical numerical problems.
 
-## Consider the following setup by task:
+## Consider the following setup by task
 
 ```{r setup}
+# Set seed to '1' and generate random sample
 set.seed(1)
 
+# Generate random sample 'z' with mean '0' and standard deviation '3'
 z <- rnorm(100000, mean = 0, sd = 3) 
 
+# Define offsets to be added to the random sample
 offsets <- c(0, 1e4, 1e8, 1e12, 1e14)
 ```
 
 ## Define two algorithms for the sample variance
 
+We define two algorithms for the sample variance: 
+
+* a two-pass algorithm, and
+* an one-pass formula.
+
 ```{r algorithms}
+
+# Define two-pass algorithm for sample variance
 two_pass_variance <- function(data) {
   n <- length(data)
   sum((data - mean(data))^2) / (n - 1)
 }
 
+# Define one-pass formula for sample variance
 one_pass_variance <- function(data) {
   n <- length(data)
   (sum(data^2) - sum(data)^2 / n) / (n - 1)
@@ -32,7 +47,11 @@ one_pass_variance <- function(data) {
 
 ## Create Data-Frame with one row per offset
 
+We build a table with one row per offset, and each row holds the variance of the shifted sample computed three ways. The table will be later used to compare the accuracy of the different variance computation methods.
+
 ```{r dataframe}
+
+# Create a data frame to store results for each offset
 Data_Frame <- data.frame (
   offsets = offsets,
   var = NA,
@@ -40,8 +59,9 @@ Data_Frame <- data.frame (
   one_pass_formula = NA
 )
 
+# Loop over each offset and compute variances using different methods
 for (i in seq_along(offsets)) {
-    x <- offsets[i] + z
+    x <- offsets[i] + z  # Add offset to the random sample
     Data_Frame$var[i] <- var(x)
     Data_Frame$two_pass_algorithm[i] <- two_pass_variance(x)
     Data_Frame$one_pass_formula[i] <- one_pass_variance(x)
@@ -52,13 +72,17 @@ print(Data_Frame, digits = 10)
 
 ## Compare each result with var(z)
 
+Compute `absolute` and `relative` errors compared to `var(z)`.
+
 ```{r sample variance comparison}
 var_z <- var(z)
 
+# Compute absolute errors
 Data_Frame$abs_err_var <- abs(Data_Frame$var - var_z)
 Data_Frame$abs_err_two <- abs(Data_Frame$two_pass_algorithm - var_z)
 Data_Frame$abs_err_one <- abs(Data_Frame$one_pass_formula - var_z)
 
+# Compute relative errors
 Data_Frame$rel_err_var <- Data_Frame$abs_err_var / var_z
 Data_Frame$rel_err_two <- Data_Frame$abs_err_two / var_z
 Data_Frame$rel_err_one <- Data_Frame$abs_err_one / var_z
@@ -68,14 +92,17 @@ print(Data_Frame[c("offsets", "rel_err_var", "rel_err_two", "rel_err_one")], dig
 
 For moderate data both algorithms for the sample variance and var() agree almost exactly. For large offset they no longer agree:
 
-**The one-pass formula is accurate to about 7 digits at offset = 1e4 with a relative error of 1.4e-7, but at offset = 1e8 the relative error is 3.77 which makes the result useless. Therefore it loses useful accuracy somewhere between 1e4 and 1e8.**
-In contrast, var() and the two-pass algorithm stay accurate over the whole offset range. Even at offset = 1e14 relative error lies below 1e-5.
+**The one-pass formula is accurate to about 7 digits at offset = $1e^{4}$ with a relative error of $1.4e^{-7}$, but at offset = $1e^{8}$ the relative error is $3.77$ which makes the result useless. Therefore it loses useful accuracy somewhere between $1e^{4}$ and $1e^{8}$.**
+In contrast, `var()` and the two-pass algorithm stay accurate over the whole offset range. Even at offset = $1e^{14}$ relative error lies below $1e^{-5}$.
 
 ## Comparison of the relative errors with log-log plot
 
 ```{r relerr-plot, echo=FALSE}
+
+# Define function to compute log10 of relative errors with a lower bound
 err <- function(e) log10(pmax(e, 1e-16))
 
+# Plot relative errors on a log-log scale
 matplot(1:5,
         cbind(err(Data_Frame$rel_err_var),
               err(Data_Frame$rel_err_two),
@@ -89,10 +116,9 @@ legend("topleft", c("var()", "two-pass", "one-pass"),
        lty = c(1, 2, 1), lwd = c(4, 1.5, 1.5))
 ```
 
-## Explain why adding a constant not change the variance mathematically but can still affect a particular numerical algorithm.
+## Explain, why adding a constant doesnot change the variance mathematically but can still affect a particular numerical algorithm.
 
-Mathematically, adding a constant shifts the mean by the same amount, so the
-deviations from the mean stay the same:
+Mathematically, adding `a` constant shifts the mean by the same amount, so the deviations from the mean stay the same:
 
 $$
 \operatorname{Var}(X+a) = E\big[((X+a)-(E[X]+a))^2\big] = \operatorname{Var}(X).
@@ -101,37 +127,35 @@ $$
 For the sample variance, $\bar{x} = a + \bar{z}$ and therefore $x_i - \bar{x} = z_i - \bar{z}$,
 so $s^2$ does not depend on $a$.
 
-The algorithms differ in what they compute with. The two-pass algorithm subtracts the
-mean first, so it only squares small deviations and the constant cancels early.
-The one-pass formula $\sum x_i^2 - (\sum x_i)^2/n$ works with two terms of size about
-$n a^2$, while the variance is only about $n \sigma^2$. Doubles keep about 16 digits,
-so for large $a$ the rounding error of the two big terms is as large as their difference.
-This is cancellation. In my results the relative error of the one-pass formula grows
-from $1.4 \cdot 10^{-7}$ at $a = 10^4$ to $3.77$ at $a = 10^8$.
+The algorithms differ in what they compute with. 
+
+* The two-pass algorithm subtracts the mean first, so it only squares small deviations and the constant cancels early.
+* The one-pass formula $\sum x_i^2 - (\sum x_i)^2/n$ works with two terms of size about $n a^2$,
+ while the variance is only about $n \sigma^2$. 
+
+Doubles keep about 16 digits, so for large $a$ the rounding error of the two big terms is as large as their difference.
+This is cancellation. 
+
+In my results the relative error of the one-pass formula grows from $1.4 \cdot 10^{-7}$ at $a = 10^4$ to $3.77$ at $a = 10^8$.
 
 At $a = 10^{14}$ even `var()` and the two-pass algorithm are slightly off
 (relative error $6.6 \cdot 10^{-6}$). Here the loss happens already when $a + z_i$
 is formed, because doubles near $10^{14}$ are about $0.016$ apart.
 
-So the statistic does not depend on $a$, but how well a given algorithm computes it does.
+So, the statistic does not depend on $a$, but how well a given algorithm computes it does.
 
 ## Measurements in nanometres have values around $10^{12}$, but the relevant variation is only a few units. Would you preprocess the data before computing descriptive statistics and if yes, with which transformation and why?
 
 Yes, I would centre the data before computing anything. I would subtract a constant
-$c$ close to the typical value, for example the median or a nominal value, and work
-with $y_i = x_i - c$.
+$c$ close to the typical value, for example the median or a nominal value, and work with $y_i = x_i - c$.
 
 The variance does not change, $\operatorname{Var}(y) = \operatorname{Var}(x)$, but the
-numbers are now small. A formula like $\sum x_i^2 - (\sum x_i)^2/n$ would otherwise
+numbers are now small. 
+
+A formula like $\sum x_i^2 - (\sum x_i)^2/n$ would otherwise
 subtract two huge, nearly equal numbers, and the few units of variation would be
 buried in rounding error. Doubles also resolve small numbers much more finely: near
 $10^{12}$ adjacent values are about $10^{-4}$ apart.
 
-I would keep $c$ to get the mean back ($\bar{x} = c + \bar{y}$). Variance and standard
-deviation need no back-transformation. Rescaling is not needed for descriptive
-statistics.
-
-## GitHub Documents
-
-This is an R Markdown format used for publishing markdown documents to GitHub. When you click the **Knit** button all R code chunks are run and a markdown file (.md) suitable for publishing to GitHub is generated.
-
+I would keep $c$ to get the mean back ($\bar{x} = c + \bar{y}$). Variance and standard deviation need no back-transformation.
+Rescaling is not needed for descriptive statistics.
