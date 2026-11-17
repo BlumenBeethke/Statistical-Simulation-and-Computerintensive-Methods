@@ -95,7 +95,7 @@ log_ratio <- l(p1) - l(p2)
 print(log_ratio)
 ```
 
-The likelihood is a product of n densities that are typically below 1. For a moderately large sample likelihood can drop under a critical value, the smallest positive double in R, about $10^{-308}$, and is then stored as $0$. This phenomenon is called **underflow**. Then $L(p1) / L(p2)$ gives $0/0 =$ `NaN` and $log(L(p1)) - log(L(p2))$ gives $-inf - (-inf) =$ `NaN`.
+The likelihood is a product of n densities that are typically below 1. For a moderately large sample likelihood can drop under a critical value, the smallest positive double in R, about $10^{-308}$, and is then stored as $0$. This phenomenon is called **underflow**. Then $L(p1) / L(p2)$ gives $0/0 =$ `NaN` and $log(L(p1)) - log(L(p2))$ gives $-inf - (-inf) =$ `NaN`. This phenomenon is called **overflow**.
 The log-likelihood is a sum, not a product. Its difference is finite and can be read directly. A positive value favours $p1$, a negative one favours $p2$.
 
 The point is the contrast between the two approaches. The product of many small terms underflows to $0$, while the sum of their logs stays in a normal range.

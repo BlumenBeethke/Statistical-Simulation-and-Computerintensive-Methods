@@ -142,4 +142,8 @@ print(rel_err_c)
 
 ## A statistical procedure requires inversion of the covariance matrix. What warning signs in this example would make you cautious about doing that directly? Suggest at least two safer approaches.
 
-Directly inverting this covariance matrix is dangerous due to severe multicollinearity, indicated by a near- zero determinant, near-perfect correlation (0.999999995071406), and an extreme condition number (4 x 10ˆ8) driven by eigenvalue collapse. These red flags reveal a nearly singular matrix where direct inversion would amplify rounding errors into meaningless results extremely. To avoid this instability safer approaches include Ridge regularization (adding a small diagonal penalty λI to lift near-zero eigenvalues) or using Singular Value Decomposition to invert or truncate the matrix safely without numerical explosion.
+Inverting this covariance matrix directly is risky because x1 and x2 are almost perfectly collinear. The correlation differs from $1$ by only about $5 \times 10^{-9}$, the determinant is about $10^{-8}$ and the eigenvalues are about $2.03$ and $5 \times 10^{-9}$, which gives a condition number of roughly $4 \times 10^8$.
+The matrix is therefore nearly singular and an inversion would turn small rounding errors into large errors in the result, which makes it unreliable.
+`solve()` would still return a matrix without any error, because the matrix is not exactly singular.
+
+Two safer options are ridge regularisation, which adds a small penalty $\lambda I$ to the diagonal and lifts the tiny eigenvalue away from zero and a singular value decomposition, which allows inverting the matrix stably or truncating the near-zero singular value.
