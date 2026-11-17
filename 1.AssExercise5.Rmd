@@ -1,0 +1,141 @@
+---
+title: "Exercise 5 — Whitening is not unique"
+date: "`r Sys.Date()`"
+author: "Lennart Bethke"
+output: 
+  github_document: default
+  pdf_document: default
+echo: TRUE
+toc: true  
+---
+
+## Consider the following setup by exercise:
+
+Let $X \in \mathbb{R}^{n \times p}$ be a data matrix with observations in the rows. After centring, let $S = \operatorname{Cov}(X)$ be the sample covariance matrix.
+
+A matrix $W$ is a whitening matrix if the transformed observations have identity covariance:
+
+$$ Z = X W^\top, \qquad \operatorname{Cov}(Z) = W S W^\top = I_p. $$
+
+The goal of this exercise is to investigate why whitening is not unique and how different matrix decompositions lead to different, but valid, whitening transformations.
+
+```{r setup}
+set.seed(42)
+```
+
+## Simulate Data
+
+First we simulate n = 1000 observations from a 5-dimensional multivariate normal distribution with a non-diagonal covariance matrix. We construct such data without an additional package by starting with independent standard normal variables and multiplying them by a suitable matrix.
+Finally we centre the resulting data and inspect its sample covariance matrix S.
+
+```{r simulate}
+n <- 1000
+p <- 5
+
+# Independent standard normals
+Z_raw <- matrix(data = rnorm(n * p), nrow = n, ncol = p)
+
+# Non-diagonal covariance matrix
+A <- matrix(data = rnorm(p * p), nrow = p, ncol = p)
+Sigma_true <- crossprod(A) + diag(p) # ensures positive definiteness
+
+# Use Cholesky decomposition `chol()` on symmetric, positive definite matrix
+R <- chol(Sigma_true)
+
+# Mix the independent columns linearly so that X has covariance Sigma_true
+X <- Z_raw %*% R
+
+# Centre the data
+X_centered <- sweep(X, 2, colMeans(X))
+
+# Covariance matrix S
+S <- cov(X_centered)
+
+print("Sample Covariance Matrix S:")
+print(S)
+
+# Inspect S and compare to Sigma_true
+round(S, digits = 2)
+round(Sigma_true, digits = 2)
+
+abs(S - Sigma_true)
+```
+
+`rnorm()` gives columns of independent random numbers. They have nothing to do with each other (no correlation and variance $1$).
+Every symmetric, positive definite matrix $A \in \mathbb{R}^{n \times n}$ can be written uniquely in the form $$ A = L D L^\top $$ where $L$ is a unit lower triangular matrix and $D$ is a diagonal matrix with positive entries.
+Next we mix the independent columns linearly by multiplying with a suitable matrix $A$ to get a non-diagonal covariance matrix. 
+The resulting data is centred and the sample covariance matrix $S$ is computed.
+
+*Inspection:*
+S is symmetric and clearly non-diagonal. S matches Sigma_true closely, with a largest deviation of about 0.34.
+
+## PCA whitening
+
+Next we compute the eigendecomposition of the covariance matrix $S$ to obtain the PCA whitening matrix $W_\text{PCA}$ and the whitened data $Z_\text{PCA}$. 
+We verify that the covariance of $Z_\text{PCA}$ is approximately the identity matrix.
+
+```{r pca-whitening}
+# Compute the eigendecomposition of S
+eig <- eigen(S) 
+evals <- eig$values 
+Q <- eig$vectors
+
+# Compute the PCA whitening matrix and whitened data
+W_pca <- diag(1 / sqrt(evals)) %*% t(Q) 
+Z_pca <- X_centered %*% t(W_pca)
+
+# Whitened data should have identity covariance
+cov_pca <- cov(Z_pca)
+print(cov_pca)
+
+# Rounded for better readability
+round(cov_pca, digits = 10)
+```
+
+## ZCA whitening
+
+Here we compute the ZCA whitening matrix $W_\text{ZCA}$ and the whitened data $Z_\text{ZCA}$.
+Again we verify that the covariance of $Z_\text{ZCA}$ is approximately the identity matrix.
+
+```{r zca-whitening}
+# Compute the ZCA whitening matrix and whitened data
+W_zca <- Q %*% diag(1 / sqrt(evals)) %*% t(Q) 
+Z_zca <- X_centered %*% t(W_zca)
+
+# Whitened data should have identity covariance
+cov_zca <- cov(Z_zca)
+print(cov_zca)
+
+# Rounded for better readability
+round(cov(Z_zca), 10)
+```
+
+## Cholesky whitening
+
+We compute a Cholesky factorization. Construct a whitening transformation based on $L^{−1}$ and again verify that it also produces identity covariance.
+
+```{r cholesky-whitening}
+L_chol <- chol(S) 
+L_lower <- t(L_chol) 
+W_chol <- solve(L_lower)
+
+Z_chol <- X_centered %*% t(W_chol) 
+cov_chol <- cov(Z_chol)
+print(cov_chol)
+
+# Rounded for better readability
+round(cov_chol, 10)
+```
+
+## Show mathematically that if W is a whitening matrix and R is any orthogonal matrix, then $RW$ is also a whitening matrix. Use this result to explain why whitening is not unique.
+
+Proof: Let $W$ be a valid whitening matrix such that $\mathrm{Cov}(XW^\top) = WSW^\top = I_p$. Let $R$ be any orthogonal matrix ($R^\top R = RR^\top = I_p$). Consider the transformed data $Z^* = X(RW)^\top = XW^\top R^\top = ZR^\top$.
+
+$$
+\mathrm{Cov}(Z^*) = \mathrm{Cov}(ZR^\top) = R^\top \mathrm{Cov}(Z) R = R^\top I_p R = R^\top R = I_p
+$$
+
+**Claim.** Whitening matrices are not unique.
+
+Since the matrix $RW$ successfully yields an identity covariance matrix, any orthogonal rotation $R$ of a whitening matrix is also a valid whitening matrix. This proves that whitening is not unique.
+
