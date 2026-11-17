@@ -58,14 +58,11 @@ x[which(p1 == 0)[1]]
 
 ## Explain why `1 - pnorm(x)` can fail even when `pnorm(x)` itself is accurately computed
 
-When x is large, pnorm(x) gets extremely close to 1 (something like 0.9999999999999993).
+For large $x$, `pnorm(x)` is very close to 1, but doubles near 1 are spaced only about $1.1 \cdot 10^{-16}$ apart. `pnorm(x)` is therefore stored with an absolute error of that size, even though it is computed accurately. 
+The subtraction `1 - pnorm(x)` removes the leading digits, which are all equal to 1, and what remains is mostly rounding error. This effect is called *cancellation*: the absolute error stays the same while the result becomes very small, so its relative error becomes large. 
+Once the true tail is smaller than the spacing, `pnorm(x)` equals exactly $1$ and the result is $0$, as for $x \ge 10$.
 
-Subtracting two nearly equal numbers, the computer simply runs out of bits trying to calculate the tiny difference from 1.0. Doubles carry about 16 significant digits, so every stored number has a relative rounding error of about $10^{-16}$.
-This destroys the accuracy that `pnorm(x)` has. It ends up rounding `pnorm(x)` to exactly $1$ and the result of `1 - pnorm(x)` is $0$, as for $x \ge 10$..
-
-`pnorm(x, lower.tail = FALSE)` avoids this problem, because it computes the tail directly without subtracting from 1, so the relative accuracy is preserved.
-
-?This is cancellation.?
+`pnorm(x, lower.tail = FALSE)` avoids this problem because it computes the tail directly without subtracting from 1, so the relative accuracy is preserved.
 
 ## For each x, recover a probability from the log-probability using `exp()`. At what point does even that conversion become unhelpful?
 
@@ -90,3 +87,20 @@ The conversion becomes useless roughly at $\log p < -745$, which for the standar
 If you try to run exp on anything more negative than that, the computer underflows it straight to $0$. 
 
 ## Imagine a multiple-testing problem with a test statistic corresponding to Z = 9. You need the p-value to compare it with a very stringent threshold. Which representation of the probability would you carry through the computation, and why?
+
+We go through the computation with $Z = 9$:
+
+```{r z9}
+lp9 <- pnorm(9, lower.tail = FALSE, log.p = TRUE)
+lp9
+exp(lp9)
+1 - pnorm(9)
+```
+
+For $Z = 9$ the log p-value is $-43.63$, which corresponds to $p \approx 1.1 \cdot 10^{-19}$. `1 - pnorm(9)` returns 0 here, so it cannot be used.
+
+I would carry the log p-value, `pnorm(z, lower.tail = FALSE, log.p = TRUE)`, through the computation!
+
+Products of probabilities, as in Fisher's method, turn into sums of logs and no longer underflow, and sums of small probabilities, as in a union bound or a Bonferroni-type correction, can be done with log-sum-exp.
+
+I would convert back with `exp()` only for display and only while the value stays above the underflow limit of about $\log p > -745$.

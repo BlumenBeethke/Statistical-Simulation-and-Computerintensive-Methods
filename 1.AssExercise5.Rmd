@@ -46,10 +46,10 @@ R <- chol(Sigma_true)
 X <- Z_raw %*% R
 
 # Centre the data
-X_centered <- sweep(X, 2, colMeans(X))
+Xc <- sweep(X, 2, colMeans(X))
 
 # Covariance matrix S
-S <- cov(X_centered)
+S <- cov(Xc)
 
 print("Sample Covariance Matrix S:")
 print(S)
@@ -77,12 +77,12 @@ We verify that the covariance of $Z_\text{PCA}$ is approximately the identity ma
 ```{r pca-whitening}
 # Compute the eigendecomposition of S
 eig <- eigen(S) 
-evals <- eig$values 
+lambda <- eig$values 
 Q <- eig$vectors
 
 # Compute the PCA whitening matrix and whitened data
-W_pca <- diag(1 / sqrt(evals)) %*% t(Q) 
-Z_pca <- X_centered %*% t(W_pca)
+W_pca <- diag(1 / sqrt(lambda)) %*% t(Q) 
+Z_pca <- Xc %*% t(W_pca)
 
 # Whitened data should have identity covariance
 cov_pca <- cov(Z_pca)
@@ -98,9 +98,9 @@ Here we compute the ZCA whitening matrix $W_\text{ZCA}$ and the whitened data $Z
 Again we verify that the covariance of $Z_\text{ZCA}$ is approximately the identity matrix.
 
 ```{r zca-whitening}
-# Compute the ZCA whitening matrix and whitened data
+# Compute the ZCA whitening matrix and whitened data like given in the lecture notes
 W_zca <- Q %*% diag(1 / sqrt(evals)) %*% t(Q) 
-Z_zca <- X_centered %*% t(W_zca)
+Z_zca <- Xc %*% t(W_zca)
 
 # Whitened data should have identity covariance
 cov_zca <- cov(Z_zca)
@@ -115,17 +115,59 @@ round(cov(Z_zca), 10)
 We compute a Cholesky factorization. Construct a whitening transformation based on $L^{−1}$ and again verify that it also produces identity covariance.
 
 ```{r cholesky-whitening}
-L_chol <- chol(S) 
-L_lower <- t(L_chol) 
-W_chol <- solve(L_lower)
+# chol() computes the cholesky factorization of S, returning the upper triangular matrix U such that S = U^T U
+U <- chol(S)
+L <- t(U)
+W_chol <- solve(L)
 
-Z_chol <- X_centered %*% t(W_chol) 
-cov_chol <- cov(Z_chol)
-print(cov_chol)
+# Whitened data
+Z_chol <- Xc %*% t(W_chol)
+# Sample covariance of the whitened data
+cov_chol <- cov(Z_chol) 
 
 # Rounded for better readability
 round(cov_chol, 10)
 ```
+
+Is `L` a square root of `S` in the sense `L^2 = S`?
+
+```{r square-root}
+# Matrix multiplication of L with itself. Check if it equals S
+isTRUE(all.equal(L %*% L, S))
+# Matrix multiplication of L with L transpose.
+isTRUE(all.equal(L %*% t(L), S))
+```
+
+No, in general $L^2 \neq S$. $L$ is lower triangular, so $L^2$ is lower triangular as well, while $S$ has nonzero entries above the diagonal. The Cholesky factor satisfies $LL^\top = S$, which is a different product from $LL$.
+
+## Compare the three whitened data sets
+
+* Are the transformed observations identical?
+
+```{r comparison}
+Zs <- list(PCA = Z_pca, ZCA = Z_zca, Cholesky = Z_chol)
+
+isTRUE(all.equal(Z_pca, Z_zca))
+isTRUE(all.equal(Z_pca, Z_chol))
+```
+
+No, the transformed observations are not identical. `all.equal()` returns `FALSE` for PCA vs. ZCA and for PCA vs. Cholesky, so the three methods give different values for the same observation. Each approach uses a completely different geometric approach (W_PCA, W_ZCA, and W_Chol). 
+
+* Do they have the same covariance matrix?
+
+```{r comparison-cov}
+round(cov_pca, 2)
+round(cov_zca, 2)
+round(cov_chol, 2)
+```
+
+Chunk shows that all three whitened data sets get to the same identity covariance matrix up to rounding error: $Cov(Z) = I_p$ (with p = 5). 
+
+* Which aspects of the data have changed differently?
+
+ - PCA expresses the data in the eigenvector basis. The method rotates the data into its principal component eigenbasis to strip out correlations.
+ - ZCA uses the symmetric matrix `S^{-1/2}`. ZCA whitens while rotating as little as possible so the features still look remarkably like the original space.
+ - Cholesky uses a lower triangular `W`. It applies a triangular transformation that preserves a recursive structure among the variables.
 
 ## Show mathematically that if W is a whitening matrix and R is any orthogonal matrix, then $RW$ is also a whitening matrix. Use this result to explain why whitening is not unique.
 
@@ -137,5 +179,156 @@ $$
 
 **Claim.** Whitening matrices are not unique.
 
-Since the matrix $RW$ successfully yields an identity covariance matrix, any orthogonal rotation $R$ of a whitening matrix is also a valid whitening matrix. This proves that whitening is not unique.
+Whitening is not unique because every orthogonal $R$ produces one. $W$ is invertible (from $W S W^{T} = I$), so $RW = W$ only if $R = I$. Rotations by arbitrary angles give infinitely many different matrices $RW$. Since the matrix $RW$ successfully yields an identity covariance matrix, any orthogonal rotation $R$ of a whitening matrix is also a valid whitening matrix. 
+This proves that whitening is not unique.
 
+## Create a more difficult data set by making the fifth variable almost a linear combination of another variable.
+
+The fifth variable is made almost equal to the first. The original $X$ is left unchanged and a copy is modified.
+
+```{r collinear}
+x2 <- X
+X2[, 5] <- X2[, 1] + 1e-7 * rnorm(n)
+X2c <- scale(X2, center = TRUE, scale = FALSE)
+CovX2 <- cov(X2c)
+
+e2 <- eigen(CovX2)
+lambda2 <- e2$values
+Q2 <- e2$vectors
+kap <- kappa(CovX2, exact = TRUE)
+```
+
+• the eigenvalues of S;
+
+• kappa(S);
+
+• the three whitening transformations;
+
+• the covariance matrices after whitening.
+
+What numerical difficulties do you observe?
+
+```{r collinear-whitening, warning = FALSE}
+W2 <- list(
+  PCA = diag(1 / sqrt(lambda2)) %*% t(Q2),
+  ZCA = Q2 %*% diag(1 / sqrt(lambda2)) %*% t(Q2)
+)
+
+ch <- tryCatch(chol(S2), error = function(e) NULL)
+if (!is.null(ch)) W2$Cholesky <- solve(t(ch))
+
+is.null(ch)
+sapply(W2, function(W) max(abs(cov(X2c %*% t(W)) - diag(p))))
+```
+
+The smallest eigenvalue is `r signif(min(lambda2), 3)` and
+`kappa(S)` is `r signif(kap, 3)`. In theory the smallest eigenvalue is about
+`1e-14 / 2`, the variance of the direction `(X_5 - X_1) / sqrt(2)`. Rounding
+errors in the eigenvalues are of size `eps * lambda_max`, here
+`r signif(rounding, 3)`, which is the same order of magnitude. The smallest
+eigenvalue and its eigenvector are therefore barely determined by the data in
+floating point, and the eigenvalue could even come out slightly negative.
+
+Both PCA and ZCA divide by `sqrt(lambda_min)`, which blows up this direction
+and its rounding error. The last table shows how far each result is from the
+identity. For Cholesky the last pivot is almost zero. Whether `chol()` stops
+with a "not positive definite" error or returns a factor with a tiny last
+pivot is shown by `is.null(ch)` above.
+
+
+
+
+
+
+
+
+
+## Task 6: Orthogonal transformations of `W`
+
+Let `W S W^T = I` and let `R` be orthogonal, `R R^T = R^T R = I`. Then
+
+$$
+(RW) \, S \, (RW)^\top = R \, (W S W^\top) \, R^\top = R R^\top = I_p .
+$$
+
+So `Z* = X (RW)^T` has identity covariance and `RW` is a whitening matrix.
+
+Whitening is not unique because every orthogonal `R` produces one. `W` is
+invertible (from `W S W^T = I`), so `RW = W` only if `R = I`. Rotations by
+arbitrary angles give infinitely many different matrices `RW`.
+
+The converse also holds. From `W S W^T = I` we get `W^T W = S^{-1}`. If `W_1`
+and `W_2` are both whitening matrices, `R = W_2 W_1^{-1}` satisfies
+`R R^T = W_2 (W_1^T W_1)^{-1} W_2^T = W_2 S W_2^T = I`. Hence all whitening
+matrices have the form `R S^{-1/2}`. PCA, ZCA and Cholesky are three
+different choices of `R`.
+
+```{r orthogonal}
+R_chol <- W_chol %*% solve(W_zca)
+max(abs(crossprod(R_chol) - diag(p)))
+
+R_rand <- qr.Q(qr(matrix(rnorm(p * p), p, p)))
+check(Xc %*% t(R_rand %*% W_zca))
+```
+
+
+```{r collinear-whitening, warning = FALSE}
+W2 <- list(
+  PCA = diag(1 / sqrt(lambda2)) %*% t(Q2),
+  ZCA = Q2 %*% diag(1 / sqrt(lambda2)) %*% t(Q2)
+)
+
+ch <- tryCatch(chol(S2), error = function(e) NULL)
+if (!is.null(ch)) W2$Cholesky <- solve(t(ch))
+
+is.null(ch)
+sapply(W2, function(W) max(abs(cov(X2c %*% t(W)) - diag(p))))
+```
+
+The smallest eigenvalue is `r signif(min(lambda2), 3)` and
+`kappa(S)` is `r signif(kap, 3)`. In theory the smallest eigenvalue is about
+`1e-14 / 2`, the variance of the direction `(X_5 - X_1) / sqrt(2)`. Rounding
+errors in the eigenvalues are of size `eps * lambda_max`, here
+`r signif(rounding, 3)`, which is the same order of magnitude. The smallest
+eigenvalue and its eigenvector are therefore barely determined by the data in
+floating point, and the eigenvalue could even come out slightly negative.
+
+Both PCA and ZCA divide by `sqrt(lambda_min)`, which blows up this direction
+and its rounding error. The last table shows how far each result is from the
+identity. For Cholesky the last pivot is almost zero. Whether `chol()` stops
+with a "not positive definite" error or returns a factor with a tiny last
+pivot is shown by `is.null(ch)` above.
+
+## Task 8: Eigenvalue (numerically) zero
+
+Two ways to continue, applied to `S2` from Task 7.
+
+```{r remedies}
+eps <- 1e-6
+e_r <- eigen(S2 + eps * diag(p))
+W_ridge <- e_r$vectors %*% diag(1 / sqrt(e_r$values)) %*% t(e_r$vectors)
+Z_ridge <- X2c %*% t(W_ridge)
+round(eigen(cov(Z_ridge))$values, 4)
+
+keep <- lambda2 > 1e-8 * lambda2[1]
+W_trunc <- diag(1 / sqrt(lambda2[keep])) %*% t(Q2[, keep])
+Z_trunc <- X2c %*% t(W_trunc)
+sum(keep)
+max(abs(cov(Z_trunc) - diag(sum(keep))))
+```
+
+**Ridge (whiten `S + eps I`).** Numerically this is stable: the condition
+number drops from about `1e15` to `(lambda_max + eps) / eps`, roughly `1e7`.
+Statistically the result is no longer white. In the eigenbasis, direction `i`
+gets variance `lambda_i / (lambda_i + eps)`. This is close to 1 for the large
+eigenvalues and close to 0 for the degenerate one, as the printed eigenvalues
+of `cov(Z_ridge)` show. The estimate is biased by `eps`, which has to be
+chosen.
+
+**Truncation (drop directions with tiny eigenvalues).** Numerically the
+retained part has condition number `lambda_1 / lambda_4`, which is small, and
+nothing is divided by a near-zero number. Statistically `Z` has only
+`r sum(keep)` columns, so the map is no longer invertible and the information
+in the dropped direction is lost. Here that direction is `X_5 - X_1`, which is
+pure noise of size `1e-7`, so dropping it is harmless. Whitening it instead
+would turn this noise into a coordinate with unit variance.
