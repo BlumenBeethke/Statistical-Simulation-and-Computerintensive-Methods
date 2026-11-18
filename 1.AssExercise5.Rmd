@@ -17,22 +17,28 @@ A matrix $W$ is a whitening matrix if the transformed observations have identity
 
 $$ Z = X W^\top, \qquad \operatorname{Cov}(Z) = W S W^\top = I_p. $$
 
-The goal of this exercise is to investigate why whitening is not unique and how different matrix decompositions lead to different, but valid, whitening transformations.
+The goal of this exercise is to investigate,
+
+* why whitening is not unique, and 
+* how different matrix decompositions lead to different, but valid, whitening transformations.
 
 ```{r setup}
+# Set seed to '42' and generate random sample
 set.seed(42)
 ```
 
 ## Simulate Data
 
-First we simulate n = 1000 observations from a 5-dimensional multivariate normal distribution with a non-diagonal covariance matrix. We construct such data without an additional package by starting with independent standard normal variables and multiplying them by a suitable matrix.
-Finally we centre the resulting data and inspect its sample covariance matrix S.
+First we simulate `n = 1000` observations from a 5-dimensional multivariate normal distribution with a non-diagonal covariance matrix.
+ We construct such data without an additional package by starting with independent standard normal variables and multiplying them by a suitable matrix.
+Finally, we centre the resulting data and inspect its sample covariance matrix `S`.
 
 ```{r simulate}
+# Set parameters
 n <- 1000
 p <- 5
 
-# Independent standard normals
+# Independent standard normals 
 Z_raw <- matrix(data = rnorm(n * p), nrow = n, ncol = p)
 
 # Non-diagonal covariance matrix
@@ -61,7 +67,7 @@ round(Sigma_true, digits = 2)
 abs(S - Sigma_true)
 ```
 
-`rnorm()` gives columns of independent random numbers. They have nothing to do with each other (no correlation and variance $1$).
+The `rnorm()` method gives columns of independent random numbers. They have nothing to do with each other (no correlation and variance $1$).
 Every symmetric, positive definite matrix $A \in \mathbb{R}^{n \times n}$ can be written uniquely in the form $$ A = L D L^\top $$ where $L$ is a unit lower triangular matrix and $D$ is a diagonal matrix with positive entries.
 Next we mix the independent columns linearly by multiplying with a suitable matrix $A$ to get a non-diagonal covariance matrix. 
 The resulting data is centred and the sample covariance matrix $S$ is computed.
@@ -71,7 +77,7 @@ $S$ is symmetric and clearly non-diagonal. S matches Sigma_true closely, with a 
 
 ## PCA whitening
 
-Next we compute the eigendecomposition of the covariance matrix $S$ to obtain the PCA whitening matrix $W_\text{PCA}$ and the whitened data $Z_\text{PCA}$. 
+Next, we compute the eigendecomposition of the covariance matrix $S$ to obtain the PCA whitening matrix $W_\text{PCA}$ and the whitened data $Z_\text{PCA}$. 
 We verify that the covariance of $Z_\text{PCA}$ is approximately the identity matrix.
 
 ```{r pca-whitening}
@@ -134,6 +140,7 @@ Is `L` a square root of `S` in the sense `L^2 = S`?
 ```{r square-root}
 # Matrix multiplication of L with itself. Check if it equals S
 isTRUE(all.equal(L %*% L, S))
+
 # Matrix multiplication of L with L transpose.
 isTRUE(all.equal(L %*% t(L), S))
 ```
@@ -187,21 +194,26 @@ This proves that whitening is not unique.
 The fifth variable is made almost equal to the first. The original $X$ is left unchanged and a copy is modified.
 
 ```{r collinear}
+# Create a copy of X and 
+# make the fifth variable almost equal to the first
 X2 <- X
 X2[, 5] <- X2[, 1] + 1e-7 * rnorm(n)
+
+# Centre the new data and compute its covariance matrix
 X2c <- scale(X2, center = TRUE, scale = FALSE)
 CovX2 <- cov(X2c)
 
+# Compute the eigenvalues and condition number of CovX2
 e2 <- eigen(CovX2)
 lambda2 <- e2$values
-Q2 <- e2$vectors
+Q2 <- e2$vectors  
 kap <- kappa(CovX2, exact = TRUE)
 
 print(lambda2)
 print(kap)
 ```
 
-* The eigenvalues of S
+* The eigenvalues of `S`
 
 The eigenvalues are $9.68, 5.36, 1.50, 1.26$ and $3.5e-15$. The first four are of normal size. The fifth is almost zero. 
 For a symmetric matrix such as $S$, the absolute error of a computed eigenvalue is of the order $\varepsilon \lambda_{\max} \approx 2 \cdot 10^{-15}$, which is the size of the smallest eigenvalue here.
@@ -220,6 +232,7 @@ W2 <- list(
   PCA = diag(1 / sqrt(lambda2)) %*% t(Q2),
   ZCA = Q2 %*% diag(1 / sqrt(lambda2)) %*% t(Q2)
 )
+Z2 <- lapply(W2, function(W) X2c %*% t(W))
 
 # whitening matrices
 round(W2$PCA, 2)
