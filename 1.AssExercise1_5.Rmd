@@ -796,40 +796,12 @@ For ZCA the first and fifth coordinates both have variance 1.17 instead of 1 and
 
 * What numerical difficulties do you observe?
 
-These problems are caused by cancellation: $S$ is numerically almost singular ($\kappa \approx 3 \cdot 10^{15}$), so rounding errors of the size of the smallest eigenvalue are amplified by the division by $\sqrt{\lambda_{\min}}$ and the whitening matrices contain differences of nearly equal numbers.
+These problems are caused by cancellation: $S$ is numerically almost singular ($\kappa \approx 3 \cdot 10^{15}$), so rounding errors of the size of the smallest eigenvalue are amplified by the division by $\sqrt{\lambda_{\min}}$ and the whitening matrices have differences of nearly equal numbers.
 
-## Task 8: Eigenvalue (numerically) zero
+## Suppose one eigenvalue of S is numerically zero. Suggest at least two reasonable ways to proceed if whitening is still required. Discuss both the numerical and statistical consequences.
 
-Two ways to continue, applied to `CovX2` from Task `7`.
-
-```{r ex5-remedies}
-eps <- 1e-6
-e_r <- eigen(CovX2 + eps * diag(p))
-
-# Ridge regularisation (whiten `S + eps I`)
-W_ridge <- e_r$vectors %*% diag(1 / sqrt(e_r$values)) %*% t(e_r$vectors)
-Z_ridge <- X2c %*% t(W_ridge)
-round(eigen(cov(Z_ridge))$values, 4)
-
-keep <- lambda2 > 1e-8 * lambda2[1]
-W_trunc <- diag(1 / sqrt(lambda2[keep])) %*% t(Q2[, keep])
-Z_trunc <- X2c %*% t(W_trunc)
-sum(keep)
-max(abs(cov(Z_trunc) - diag(sum(keep))))
-```
-
-**Ridge (whiten `S + eps I`).** Numerically this is stable: the condition
-number drops from about `1e15` to `(lambda_max + eps) / eps`, roughly `1e7`.
-Statistically the result is no longer white. In the eigenbasis, direction `i`
-gets variance `lambda_i / (lambda_i + eps)`. This is close to 1 for the large
-eigenvalues and close to 0 for the degenerate one, as the printed eigenvalues
-of `cov(Z_ridge)` show. The estimate is biased by `eps`, which has to be
-chosen.
-
-**Truncation (drop directions with tiny eigenvalues).** Numerically the
-retained part has condition number `lambda_1 / lambda_4`, which is small, and
-nothing is divided by a near-zero number. Statistically `Z` has only
-`r sum(keep)` columns, so the map is no longer invertible and the information
-in the dropped direction is lost. Here that direction is `X_5 - X_1`, which is
-pure noise of size `1e-7`, so dropping it is harmless. Whitening it instead
-would turn this noise into a coordinate with unit variance.
+Suppose one eigenvalue of $S$ is numerically zero.
+Two ways to continue:
+- **Ridge regularization**: Adding a tiny positive constant epsilon on the diagonal. Numerically this is stable, since the smallest eigenvalue becomes about $\varepsilon$ and the condition number drops from $3 \cdot 10^{15}$ to about $10^{7}$. Statistically it shrinks the variances towards zero, hardly for the large eigenvalues but almost completely for the degenerate one.
+Alternatively, 
+- **Truncation**: Dropping the directions whose eigenvalue is below a tolerance and whitening only the remaining ones (truncated PCA). Numerically this is stable, since nothing is divided by a number close to zero and the condition number of the kept part is only $9.68 / 1.26 \approx 7.7$. Statistically $Z$ has only 4 columns with covariance $I_4$, so the map is no longer invertible and the information in the dropped direction is lost. Here that direction is $X_5 - X_1$, which is only the added noise of size $10^{-7}$, so nothing useful is lost, but a signal with a small eigenvalue would be removed as well, so the result depends on the chosen tolerance.
