@@ -457,7 +457,7 @@ e$values # numeric vector: 2.025956e+00 4.992561e-09
 
 ## Covariance using the algebraic one-pass identity Cov(X,Y) = E(XY) − E(X)E(Y), with sample corrections as needed
 
-Here we compute the covariance matrix with the algebraic one-pass identity,
+Here, we compute the covariance matrix with the algebraic one-pass identity,
 
 $$ \mathrm{Cov}(X, Y) = E(XY) - E(X)\,E(Y) $$
 
@@ -475,13 +475,13 @@ one_pass_cov <- (crossprod(X) / n - tcrossprod(mean_X)) * n / (n - 1)
 print(one_pass_cov, digits = 15)
 ```
 
-Here `crossprod(X) / n` gives $E(x_i x_j)$ for all pairs of columns and `tcrossprod(m)` gives $E(x_i)E(x_j)$ from the column means. Their difference is the sample covariance matrix according to the one-pass identity. Finally we multiply by $n/(n-1)$ as sample correction.
+Here, `crossprod(X) / n` gives $E(x_i x_j)$ for all pairs of columns and `tcrossprod(m)` gives $E(x_i)E(x_j)$ from the column means. Their difference is the sample covariance matrix according to the one-pass identity. Finally we multiply by $n/(n-1)$ as sample correction.
 
 The entries range from about `14` to `50` instead of `1.013`. 
 
 ## Compare the resulting covariance matrix with Cov(X)
 
-Here we compare the `covariance matrix` using the `algebraic one-pass identity` with `cov(X)`.
+Here, we compare the `covariance matrix` using the `algebraic one-pass identity` with `cov(X)`.
 
 We have already computed both covariance matrices. Here we compute the `absolute` and `relative error` of the one-pass result, using `cov(X)` as reference.
 
@@ -506,8 +506,10 @@ Xc <- scale(X, center = TRUE, scale = FALSE)
 # Mean of each column of the centred matrix Xc
 mean_Xc <- colMeans(Xc)
 
-# Like before compute covariance of centred matrix Xc using algebraic one-pass identity with sample corrections
+# Like before compute covariance of centred matrix Xc 
+# using algebraic one-pass identity with sample corrections
 one_pass_cov_c <- (crossprod(Xc) / n - tcrossprod(mean_Xc)) * n / (n - 1)
+
 # Ouput with digits = 15
 print(one_pass_cov_c, digits = 15)
 
@@ -521,7 +523,7 @@ print(rel_err_c)
 
 ## A statistical procedure requires inversion of the covariance matrix. What warning signs in this example would make you cautious about doing that directly? Suggest at least two safer approaches.
 
-Inverting this covariance matrix directly is risky because x1 and x2 are almost perfectly collinear. The correlation differs from $1$ by only about $5 \times 10^{-9}$, the determinant is about $10^{-8}$ and the eigenvalues are about $2.03$ and $5 \times 10^{-9}$, which gives a condition number of roughly $4 \times 10^8$.
+Inverting this covariance matrix directly is risky because `x1` and `x2` are almost perfectly collinear. The correlation differs from $1$ by only about $5 \times 10^{-9}$, the determinant is about $10^{-8}$ and the eigenvalues are about $2.03$ and $5 \times 10^{-9}$, which gives a condition number of roughly $4 \times 10^8$.
 The matrix is therefore nearly singular and an inversion would turn small rounding errors into large errors in the result, which makes it unreliable.
 `solve()` would still return a matrix without any error, because the matrix is not exactly singular.
 
@@ -543,6 +545,7 @@ The goal of this exercise is to investigate:
 * Why whitening is not unique
 * How different matrix decompositions lead to different, but valid, whitening transformations.
 
+
 ```{r ex5-setup}
 # Set seed to '42' and generate random sample
 set.seed(42)
@@ -550,7 +553,7 @@ set.seed(42)
 
 ## Simulate Data
 
-First we simulate `n = 1000` observations from a 5-dimensional multivariate normal distribution with a non-diagonal covariance matrix.
+First, we simulate `n = 1000` observations from a 5-dimensional multivariate normal distribution with a non-diagonal covariance matrix.
 We construct such data without an additional package by starting with independent standard normal variables and multiplying them by a suitable matrix.
 Finally, we centre the resulting data and inspect its sample covariance matrix `S`.
 
@@ -590,7 +593,7 @@ abs(S - Sigma_true)
 
 The `rnorm()` method gives columns of independent random numbers. They have nothing to do with each other (no correlation and variance $1$).
 Every symmetric, positive definite matrix $A \in \mathbb{R}^{n \times n}$ can be written uniquely in the form $$ A = L D L^\top $$ where $L$ is a unit lower triangular matrix and $D$ is a diagonal matrix with positive entries.
-Next we mix the independent columns linearly by multiplying with a suitable matrix $A$ to get a non-diagonal covariance matrix. 
+Next, we mix the independent columns linearly by multiplying with a suitable matrix $A$ to get a non-diagonal covariance matrix. 
 The resulting data is centred and the sample covariance matrix $S$ is computed.
 
 *Inspection:*
@@ -621,8 +624,8 @@ round(cov_pca, digits = 10)
 
 ## ZCA whitening
 
-Here we compute the ZCA whitening matrix $W_\text{ZCA}$ and the whitened data $Z_\text{ZCA}$.
-Again we verify that the covariance of $Z_\text{ZCA}$ is approximately the identity matrix.
+Here, we compute the ZCA whitening matrix $W_\text{ZCA}$ and the whitened data $Z_\text{ZCA}$.
+Again, we verify that the covariance of $Z_\text{ZCA}$ is approximately the identity matrix.
 
 ```{r ex5-zca-whitening}
 # Compute the ZCA whitening matrix and whitened data like given in the lecture notes
@@ -699,7 +702,7 @@ Chunk shows that all three whitened data sets get to the same identity covarianc
 
 ## Show mathematically that if W is a whitening matrix and R is any orthogonal matrix, then $RW$ is also a whitening matrix. Use this result to explain why whitening is not unique.
 
-Proof: Let $W$ be a valid whitening matrix such that $\mathrm{Cov}(XW^\top) = WSW^\top = I_p$. Let $R$ be any orthogonal matrix ($R^\top R = RR^\top = I_p$). Consider the transformed data $Z^* = X(RW)^\top = XW^\top R^\top = ZR^\top$.
+**Proof:** Let $W$ be a valid whitening matrix such that $\mathrm{Cov}(XW^\top) = WSW^\top = I_p$. Let $R$ be any orthogonal matrix ($R^\top R = RR^\top = I_p$). Consider the transformed data $Z^* = X(RW)^\top = XW^\top R^\top = ZR^\top$.
 
 $$
 \mathrm{Cov}(Z^*) = \mathrm{Cov}(ZR^\top) = R^\top \mathrm{Cov}(Z) R = R^\top I_p R = R^\top R = I_p
@@ -789,11 +792,13 @@ cov2 <- lapply(Z2, cov)
 cov2_chol <- cov(Z2_chol)
 round(cov2_chol, 2) # Rounded for better readability
 
+# Covariance of the whitened data for PCA and ZCA 
+# rounded for better readability
 lapply(cov2, round, 2)
 ```
 
 In all three cases the error is confined to one direction, the noise $X_1 - X_5$. For PCA and Cholesky it appears in the fifth whitened coordinate, which has variance 1.34 and 1.64 instead of 1, while the other four are correct. 
-For ZCA the first and fifth coordinates both have variance 1.17 instead of 1 and their covariance is $-0.17$ instead of 0.
+For ZCA the first and fifth coordinates both have variance 1.17 instead of 1 and their covariance is $-0.17$ instead of `0`.
 
 * What numerical difficulties do you observe?
 
