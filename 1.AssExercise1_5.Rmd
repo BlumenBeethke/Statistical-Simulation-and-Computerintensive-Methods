@@ -12,7 +12,6 @@ toc: true
 
 # Exercise 1 — Variance after a change of origin
 
-
 In this exercise, we work with the variance and two algorithms for the sample variance of generated random samples.
 Further, we compare the results and analyse typical numerical problems.
 
@@ -100,8 +99,8 @@ print(Data_Frame[c("offsets", "rel_err_var", "rel_err_two", "rel_err_one")], dig
 
 For moderate data both algorithms for the sample variance and var() agree almost exactly. For large offset they no longer agree:
 
-*The one-pass formula is accurate to about 7 digits at offset = $1e^{4}$ with a relative error of $1.4e^{-7}$, but at offset = $1e^{8}$ the relative error is $3.77$ which makes the result useless. Therefore it loses useful accuracy somewhere between $1e^{4}$ and $1e^{8}$.*
-*In contrast, `var()` and the two-pass algorithm stay accurate over the whole offset range. Even at offset = $1e^{14}$ relative error lies below $1e^{-5}$.*
+The one-pass formula is accurate to about 7 digits at offset = $1e^{4}$ with a relative error of $1.4e^{-7}$, but at offset = $1e^{8}$ the relative error is $3.77$ which makes the result useless. Therefore it loses useful accuracy somewhere between $1e^{4}$ and $1e^{8}$.
+In contrast, `var()` and the two-pass algorithm stay accurate over the whole offset range. Even at offset = $1e^{14}$ relative error lies below $1e^{-5}$.
 
 ## Comparison of the errors
 
@@ -144,8 +143,7 @@ relative error of around $6.6 \cdot 10^{-6}$. Here the loss already happens when
 is formed, because doubles near $10^{14}$ are about $0.016$ apart. This error does not come from the algorithm. 
 
 The `one-pass formula` $\sum x_i^2 - (\sum x_i)^2/n$ works with two terms of size about $n a^2$, when $a$ large, while their difference, is only about $n \sigma^2$.
-Doubles keep about 16 significant digits, so for large offsets the rounding error of the two big terms is as large as their difference. 
-Basically You're asking the computer to use numbers that are 18 orders of magnitude apart within a 15-digit window. The tiny variance signal gets completely swallowed by rounding errors. This is a classic case of **cancellation**.
+Doubles keep about 16 significant digits, so for large offsets the rounding error of the two big terms is as large as their difference. This is a classic case of **cancellation**.
 *It is a **numerical problem**, not a statistical problem!*
 In my results the relative error of the one-pass formula grows from $1.4 \cdot 10^{-7}$ at a offset of $10^4$ to $3.77$ at offset of $10^8$.
 
@@ -153,20 +151,14 @@ In my results the relative error of the one-pass formula grows from $1.4 \cdot 1
 
 Yes, I would centre the data before computing descriptive statistics such as the mean and the variance.
 
-I would subtract a constant $c$ close to the typical value, for example the median or a nominal value and work with $y_i = x_i - c$. The variance does not change, but the numbers are now small. 
-
-**This eliminates catastrophic cancellation and ensures that descriptive statistics are computed accurately.**
-
+I would subtract a constant $c$ close to the typical value, for example the median or a nominal value and work with $y_i = x_i - c$. The variance does not change, but the numbers are small now.
 A formula like $\sum x_i^2 - (\sum x_i)^2/n$ would otherwise subtract two huge, nearly equal numbers and the few units of variation would be susceptible to rounding errors. 
-Doubles resolve small numbers much more finely.
+Doubles resolve small numbers much more finely. *This eliminates cancellation and ensures that descriptive statistics are computed accurately.*
 
 I would keep $c$ to get the mean back. Regard: $\bar{x} = c + \bar{y}$. 
-Variance and standard deviation need no back-transformation, since they depend only on the deviations $x_i - \bar{x}$ and these are the same for $y_i = x_i - c$.
-
-Dividing by the standard deviation is not needed for descriptive statistics. It would not remove the offset problem and would change the units.
+Dividing by the standard deviation is not needed for descriptive statistics.
 
 # Exercise 2 — A probability that disappears
-
 
 ```{r ex2-setup}
 # Set seed to '1' and generate random sample
@@ -213,12 +205,12 @@ x[which(rel_err > 0.05)[1]]
 x[which(p1 == 0)[1]]
 ```
 
-`p1` and `p2` still agrees at $x = 5$. At $x = 8$ it is off by about $7%$. From $x = 10$ on, the result is exactly $0$..
+`p1` and `p2` still agrees at $x = 5$. At $x = 8$ it is off by about $7$ percent. From $x = 10$ on, the result is exactly $0$.
 
 ## Explain why `1 - pnorm(x)` can fail even when `pnorm(x)` itself is accurately computed
 
 For large $x$, `pnorm(x)` is very close to 1, but doubles near 1 are spaced only about $1.1 \cdot 10^{-16}$ apart. `pnorm(x)` is therefore stored with an absolute error of that size, even though it is computed accurately. 
-The subtraction `1 - pnorm(x)` removes the leading digits, which are all equal to 1, and what remains is mostly rounding error. This effect is called *cancellation*: the absolute error stays the same while the result becomes very small, so its relative error becomes large. 
+The subtraction `1 - pnorm(x)` removes the leading digits, which are all equal to 1 and what remains is mainly rounding error. This effect is called *cancellation*. 
 Once the true tail is smaller than the spacing, `pnorm(x)` equals exactly $1$ and the result is $0$, as for $x \ge 10$.
 
 `pnorm(x, lower.tail = FALSE)` avoids this problem because it computes the tail directly without subtracting from 1, so the relative accuracy is preserved.
@@ -353,7 +345,7 @@ log_ratio <- l(p1) - l(p2)
 print(log_ratio)
 ```
 
-The likelihood is a product of n densities that are typically below 1. For a moderately large sample likelihood can drop under a critical value, the smallest positive double in R, about $10^{-308}$, and is then stored as $0$. This phenomenon is called **underflow**. Then $L(p1) / L(p2)$ gives $0/0 =$ `NaN` and $log(L(p1)) - log(L(p2))$ gives $-inf - (-inf) =$ `NaN`. This phenomenon is called **overflow**.
+The likelihood is a product of n densities that are typically below 1. For a moderately large sample likelihood can drop under a critical value, the smallest positive double in R, about $10^{-308}$, and is then stored as $0$. Then $L(p1) / L(p2)$ gives $0/0 =$ `NaN` and $log(L(p1)) - log(L(p2))$ gives $-inf - (-inf) =$ `NaN`. This phenomenon is called **underflow**. 
 The log-likelihood is a sum, not a product. Its difference is finite and can be read directly. A positive value favours $p1$, a negative one favours $p2$.
 
 The point is the contrast between the two approaches. The product of many small terms underflows to $0$, while the sum of their logs stays in a normal range.
@@ -386,7 +378,6 @@ In all three settings, the likelihood is a product of many factors smaller than 
 
 # Exercise 4 — Diagnosing a numerically suspicious covariance matrix
 
-
 ```{r ex4-setup}
 # Set seed to '3' (makes the draw reproducible)
 set.seed(3) 
@@ -411,6 +402,7 @@ dim(X)
 We compute the `covariance matrix` of 'X' as requested.
 
 ```{r ex4-covariance}
+set.seed(3)
 # Sample covariance matrix of X (divisor n - 1)
 Cov_X <- cov(X)
 
@@ -432,6 +424,7 @@ This matters here because x1 and x2 differ only through the noise term. Its vari
 We compute the `correlation` between `x1` and `x2`.
 
 ```{r ex4-correlation}
+set.seed(3)
 # Correlation of x1 and x2
 Corr_X <- cor(x1, x2)
 
@@ -449,6 +442,7 @@ The correlation of `x1` and `x2` is `0.999999995`. `R` prints it as `1` with the
 Next, we compute the `eigenvalues` of the `covariance matrix` of X.
 
 ```{r ex4-eigenvalues}
+set.seed(3)
 # Eigenvalues of `covariance matrix` of X
 e <- eigen(Cov_X, symmetric = TRUE)
 
@@ -457,13 +451,14 @@ e$values # numeric vector: 2.025956e+00 4.992561e-09
 
 ## Covariance using the algebraic one-pass identity Cov(X,Y) = E(XY) − E(X)E(Y), with sample corrections as needed
 
-Here, we compute the covariance matrix with the algebraic one-pass identity,
+Here we compute the covariance matrix with the algebraic one-pass identity,
 
 $$ \mathrm{Cov}(X, Y) = E(XY) - E(X)\,E(Y) $$
 
 and multiply the result by $n/(n-1)$ as sample correction, so that it is comparable to `cov(X)`.
 
 ```{r ex4-covariance-one-pass-identity}
+set.seed(3)
 # Mean of each column of the matrix X (Two entries, one per column of X)
 mean_X <- colMeans(X)
 
@@ -475,13 +470,13 @@ one_pass_cov <- (crossprod(X) / n - tcrossprod(mean_X)) * n / (n - 1)
 print(one_pass_cov, digits = 15)
 ```
 
-Here, `crossprod(X) / n` gives $E(x_i x_j)$ for all pairs of columns and `tcrossprod(m)` gives $E(x_i)E(x_j)$ from the column means. Their difference is the sample covariance matrix according to the one-pass identity. Finally we multiply by $n/(n-1)$ as sample correction.
+Here `crossprod(X) / n` gives $E(x_i x_j)$ for all pairs of columns and `tcrossprod(m)` gives $E(x_i)E(x_j)$ from the column means. Their difference is the sample covariance matrix according to the one-pass identity. Finally we multiply by $n/(n-1)$ as sample correction.
 
-The entries range from about `14` to `50` instead of `1.013`. 
+The entries range from about $14$ to $50$ instead of $1.013$. 
 
 ## Compare the resulting covariance matrix with Cov(X)
 
-Here, we compare the `covariance matrix` using the `algebraic one-pass identity` with `cov(X)`.
+Here we compare the `covariance matrix` using the `algebraic one-pass identity` with `cov(X)`.
 
 We have already computed both covariance matrices. Here we compute the `absolute` and `relative error` of the one-pass result, using `cov(X)` as reference.
 
@@ -506,10 +501,8 @@ Xc <- scale(X, center = TRUE, scale = FALSE)
 # Mean of each column of the centred matrix Xc
 mean_Xc <- colMeans(Xc)
 
-# Like before compute covariance of centred matrix Xc 
-# using algebraic one-pass identity with sample corrections
+# Like before compute covariance of centred matrix Xc
 one_pass_cov_c <- (crossprod(Xc) / n - tcrossprod(mean_Xc)) * n / (n - 1)
-
 # Ouput with digits = 15
 print(one_pass_cov_c, digits = 15)
 
@@ -523,7 +516,7 @@ print(rel_err_c)
 
 ## A statistical procedure requires inversion of the covariance matrix. What warning signs in this example would make you cautious about doing that directly? Suggest at least two safer approaches.
 
-Inverting this covariance matrix directly is risky because `x1` and `x2` are almost perfectly collinear. The correlation differs from $1$ by only about $5 \times 10^{-9}$, the determinant is about $10^{-8}$ and the eigenvalues are about $2.03$ and $5 \times 10^{-9}$, which gives a condition number of roughly $4 \times 10^8$.
+Inverting this covariance matrix directly is risky because x1 and x2 are almost perfectly collinear. The correlation differs from $1$ by only about $5 \times 10^{-9}$, the determinant is about $10^{-8}$ and the eigenvalues are about $2.03$ and $5 \times 10^{-9}$, which gives a condition number of roughly $4 \times 10^8$.
 The matrix is therefore nearly singular and an inversion would turn small rounding errors into large errors in the result, which makes it unreliable.
 `solve()` would still return a matrix without any error, because the matrix is not exactly singular.
 
@@ -545,7 +538,6 @@ The goal of this exercise is to investigate:
 * Why whitening is not unique
 * How different matrix decompositions lead to different, but valid, whitening transformations.
 
-
 ```{r ex5-setup}
 # Set seed to '42' and generate random sample
 set.seed(42)
@@ -553,7 +545,7 @@ set.seed(42)
 
 ## Simulate Data
 
-First, we simulate `n = 1000` observations from a 5-dimensional multivariate normal distribution with a non-diagonal covariance matrix.
+First we simulate `n = 1000` observations from a 5-dimensional multivariate normal distribution with a non-diagonal covariance matrix.
 We construct such data without an additional package by starting with independent standard normal variables and multiplying them by a suitable matrix.
 Finally, we centre the resulting data and inspect its sample covariance matrix `S`.
 
@@ -593,11 +585,8 @@ abs(S - Sigma_true)
 
 The `rnorm()` method gives columns of independent random numbers. They have nothing to do with each other (no correlation and variance $1$).
 Every symmetric, positive definite matrix $A \in \mathbb{R}^{n \times n}$ can be written uniquely in the form $$ A = L D L^\top $$ where $L$ is a unit lower triangular matrix and $D$ is a diagonal matrix with positive entries.
-Next, we mix the independent columns linearly by multiplying with a suitable matrix $A$ to get a non-diagonal covariance matrix. 
+Next we mix the independent columns linearly by multiplying with a suitable matrix $A$ to get a non-diagonal covariance matrix. 
 The resulting data is centred and the sample covariance matrix $S$ is computed.
-
-*Inspection:*
-$S$ is symmetric and clearly non-diagonal. S matches Sigma_true closely, with a largest deviation of about 0.34.
 
 ## PCA whitening
 
@@ -624,8 +613,8 @@ round(cov_pca, digits = 10)
 
 ## ZCA whitening
 
-Here, we compute the ZCA whitening matrix $W_\text{ZCA}$ and the whitened data $Z_\text{ZCA}$.
-Again, we verify that the covariance of $Z_\text{ZCA}$ is approximately the identity matrix.
+Here we compute the ZCA whitening matrix $W_\text{ZCA}$ and the whitened data $Z_\text{ZCA}$.
+Again we verify that the covariance of $Z_\text{ZCA}$ is approximately the identity matrix.
 
 ```{r ex5-zca-whitening}
 # Compute the ZCA whitening matrix and whitened data like given in the lecture notes
@@ -682,7 +671,7 @@ isTRUE(all.equal(Z_pca, Z_zca))
 isTRUE(all.equal(Z_pca, Z_chol))
 ```
 
-No, the transformed observations are not identical. `all.equal()` returns `FALSE` for PCA vs. ZCA and for PCA vs. Cholesky, so the three methods give different values for the same observation. Each approach uses a completely different geometric approach (W_PCA, W_ZCA, and W_Chol). 
+No, the transformed observations are not identical. `all.equal()` returns `FALSE` for PCA vs. ZCA and for PCA vs. Cholesky, so the three methods give different values for the same observation. Each method of W_PCA, W_ZCA, and W_Chol uses a different geometric approach. 
 
 * Do they have the same covariance matrix?
 
@@ -702,24 +691,22 @@ Chunk shows that all three whitened data sets get to the same identity covarianc
 
 ## Show mathematically that if W is a whitening matrix and R is any orthogonal matrix, then $RW$ is also a whitening matrix. Use this result to explain why whitening is not unique.
 
-**Proof:** Let $W$ be a valid whitening matrix such that $\mathrm{Cov}(XW^\top) = WSW^\top = I_p$. Let $R$ be any orthogonal matrix ($R^\top R = RR^\top = I_p$). Consider the transformed data $Z^* = X(RW)^\top = XW^\top R^\top = ZR^\top$.
-
+Proof: Let $W$ be a whitening matrix, i.e. $WSW^\top = I_p$, and let $R$ be orthogonal. Then
 $$
-\mathrm{Cov}(Z^*) = \mathrm{Cov}(ZR^\top) = R^\top \mathrm{Cov}(Z) R = R^\top I_p R = R^\top R = I_p
+(RW)\,S\,(RW)^\top = R\,(WSW^\top)\,R^\top = RR^\top = I_p,
 $$
+so $RW$ is again a whitening matrix.
 
-**Claim.** Whitening matrices are not unique.
-
-Whitening is not unique because every orthogonal $R$ produces one. $W$ is invertible (from $W S W^{T} = I$), so $RW = W$ only if $R = I$. Rotations by arbitrary angles give infinitely many different matrices $RW$. Since the matrix $RW$ successfully yields an identity covariance matrix, any orthogonal rotation $R$ of a whitening matrix is also a valid whitening matrix. 
-This proves that whitening is not unique.
+Because $W$ is invertible, $RW = W$ implies $R = I_p$. Every orthogonal $R \neq I_p$ therefore gives a different whitening matrix, and there are infinitely many of them (for example rotations by any angle). The whitening matrix is only determined up to a rotation.
 
 ## Create a more difficult data set by making the fifth variable almost a linear combination of another variable.
 
 The fifth variable is made almost equal to the first. The original $X$ is left unchanged and a copy is modified.
 
 ```{r ex5-collinear}
-# Create a copy of X and 
-# make the fifth variable almost equal to the first
+set.seed(3)
+# Create a copy of X and
+# make the fifth variable almost equal to the first 
 X2 <- X
 X2[, 5] <- X2[, 1] + 1e-7 * rnorm(n)
 
@@ -730,27 +717,28 @@ CovX2 <- cov(X2c)
 # Compute the eigenvalues and condition number of CovX2
 e2 <- eigen(CovX2)
 lambda2 <- e2$values
-Q2 <- e2$vectors  
+
+Q2 <- e2$vectors
 kap <- kappa(CovX2, exact = TRUE)
 
 print(lambda2)
-print(kap)
 ```
 
 * The eigenvalues of `S`
 
-The eigenvalues are $9.68, 5.36, 1.50, 1.26$ and $3.5e-15$. The first four are of normal size. The fifth is almost zero. 
+The eigenvalues are $9.68, 5.36, 1.50, 1.26$ and $8e-15$. The first four are of normal size. The fifth is almost zero. 
 For a symmetric matrix such as $S$, the absolute error of a computed eigenvalue is of the order $\varepsilon \lambda_{\max} \approx 2 \cdot 10^{-15}$, which is the size of the smallest eigenvalue here.
 
 * kappa(S)
 
-The condition number `kappa(S)`is the ratio of the largest to the smallest eigenvalue. Here the value is $3.0 \cdot 10^{15}$.
-The plain ratio $9.68 / 3.5 \cdot 10^{-15}$ gives about $2.7 \cdot 10^{15}$. The two values differ because the smallest eigenvalue is only known up to rounding error, so only the order of magnitude, $10^{15}$, is meaningful.
-$S$ is numerically almost singular: its smallest eigenvalue $3.5 \cdot 10^{-15}$ is of the same size as the rounding error $\varepsilon \lambda_{\max} \approx 2 \cdot 10^{-15}$ and cannot be distinguished from zero.
+The condition number `kappa(S)`is the ratio of the largest to the smallest eigenvalue. Here the value is $1.16 \cdot 10^{15}$.
+The plain ratio $9.68 / 8 \cdot 10^{-15}$ gives about $1.21 \cdot 10^{15}$. The two values differ because the smallest eigenvalue is only known up to rounding error, so only the order of magnitude, $10^{15}$, is meaningful.
+$S$ is numerically almost singular: its smallest eigenvalue $8 \cdot 10^{-15}$ is of the same size as the rounding error $\varepsilon \lambda_{\max} \approx 2 \cdot 10^{-15}$ and cannot be distinguished from zero.
 
 * The three whitening transformations;
 
 ```{r ex5-collinear-whitening}
+set.seed(3)
 # PCA and ZCA whitening matrices
 W2 <- list(
   PCA = diag(1 / sqrt(lambda2)) %*% t(Q2),
@@ -778,13 +766,14 @@ round(W2_chol, 2)
 ```
 
 These are the same formulas as before, now applied to `CovX2` with `lambda2` and `Q2`.
-The whitening matrices show where the problem comes from. The last row of PCA whitening matrix has entries of about $\pm 1.2 \cdot 10^{7}$ for $X_1$ and $X_5$. 
-In $W_\text{ZCA}$ the same direction dominates the first and fifth rows (entries $\pm 8.4 \cdot 10^{6}$), so the whitened variables are no longer close to the original ones.
+The whitening matrices show where the problem comes from. The last row of PCA whitening matrix has entries of about $\pm 8 \cdot 10^{6}$ for $X_1$ and $X_5$. 
+In $W_\text{ZCA}$ the same direction dominates the first and fifth rows (entries $\pm 5.6 \cdot 10^{6}$), so the whitened variables are no longer close to the original ones.
 The Cholesky whitening matrix is lower triangular. The two large entries are equal up to sign, so this coordinate is again the difference of two almost equal numbers, with the same *cancellation* as for PCA and ZCA. 
 
 * The covariance matrices after whitening.
 
 ```{r ex5-collinear-covariances}
+set.seed(3)
 # Covariance of the whitened data for PCA and ZCA
 cov2 <- lapply(Z2, cov)
 
@@ -792,22 +781,21 @@ cov2 <- lapply(Z2, cov)
 cov2_chol <- cov(Z2_chol)
 round(cov2_chol, 2) # Rounded for better readability
 
-# Covariance of the whitened data for PCA and ZCA 
-# rounded for better readability
 lapply(cov2, round, 2)
 ```
 
-In all three cases the error is confined to one direction, the noise $X_1 - X_5$. For PCA and Cholesky it appears in the fifth whitened coordinate, which has variance 1.34 and 1.64 instead of 1, while the other four are correct. 
-For ZCA the first and fifth coordinates both have variance 1.17 instead of 1 and their covariance is $-0.17$ instead of `0`.
+In all three cases the error is confined to one direction, the noise $X_1 - X_5$. For PCA and Cholesky it appears in the fifth whitened coordinate, which has variance $0.63$ and $0.64$ instead of $1$, while the other four are correct. 
+For ZCA the first and fifth coordinates both have variance $0.81$ instead of $1$ and their covariance is $0.19$ instead of $0$.
 
 * What numerical difficulties do you observe?
 
-These problems are caused by cancellation: $S$ is numerically almost singular ($\kappa \approx 3 \cdot 10^{15}$), so rounding errors of the size of the smallest eigenvalue are amplified by the division by $\sqrt{\lambda_{\min}}$ and the whitening matrices have differences of nearly equal numbers.
+These problems are caused by *cancellation*. $S$ is numerically almost singular ($\kappa \approx 1.16 \cdot 10^{15}$), so rounding errors of the size of the smallest eigenvalue are amplified by the division by $\sqrt{\lambda_{\min}}$ and the whitening matrices have differences of nearly equal numbers.
 
 ## Suppose one eigenvalue of S is numerically zero. Suggest at least two reasonable ways to proceed if whitening is still required. Discuss both the numerical and statistical consequences.
 
 Suppose one eigenvalue of $S$ is numerically zero.
 Two ways to continue:
-- **Ridge regularization**: Adding a tiny positive constant epsilon on the diagonal. Numerically this is stable, since the smallest eigenvalue becomes about $\varepsilon$ and the condition number drops from $3 \cdot 10^{15}$ to about $10^{7}$. Statistically it shrinks the variances towards zero, hardly for the large eigenvalues but almost completely for the degenerate one.
-Alternatively, 
+
+- **Ridge regularization**: Adding a tiny positive constant epsilon on the diagonal. Numerically this is stable, since the smallest eigenvalue becomes about $\varepsilon$ and the condition number drops from $1 \cdot 10^{15}$ to about $10^{7}$. Statistically it shrinks the variances towards zero, hardly for the large eigenvalues but almost completely for the degenerate one.
+
 - **Truncation**: Dropping the directions whose eigenvalue is below a tolerance and whitening only the remaining ones (truncated PCA). Numerically this is stable, since nothing is divided by a number close to zero and the condition number of the kept part is only $9.68 / 1.26 \approx 7.7$. Statistically $Z$ has only 4 columns with covariance $I_4$, so the map is no longer invertible and the information in the dropped direction is lost. Here that direction is $X_5 - X_1$, which is only the added noise of size $10^{-7}$, so nothing useful is lost, but a signal with a small eigenvalue would be removed as well, so the result depends on the chosen tolerance.
