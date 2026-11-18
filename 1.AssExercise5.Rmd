@@ -67,7 +67,7 @@ Next we mix the independent columns linearly by multiplying with a suitable matr
 The resulting data is centred and the sample covariance matrix $S$ is computed.
 
 *Inspection:*
-S is symmetric and clearly non-diagonal. S matches Sigma_true closely, with a largest deviation of about 0.34.
+$S$ is symmetric and clearly non-diagonal. S matches Sigma_true closely, with a largest deviation of about 0.34.
 
 ## PCA whitening
 
@@ -99,7 +99,7 @@ Again we verify that the covariance of $Z_\text{ZCA}$ is approximately the ident
 
 ```{r zca-whitening}
 # Compute the ZCA whitening matrix and whitened data like given in the lecture notes
-W_zca <- Q %*% diag(1 / sqrt(evals)) %*% t(Q) 
+W_zca <- Q %*% diag(1 / sqrt(lambda)) %*% t(Q) 
 Z_zca <- Xc %*% t(W_zca)
 
 # Whitened data should have identity covariance
@@ -187,7 +187,7 @@ This proves that whitening is not unique.
 The fifth variable is made almost equal to the first. The original $X$ is left unchanged and a copy is modified.
 
 ```{r collinear}
-x2 <- X
+X2 <- X
 X2[, 5] <- X2[, 1] + 1e-7 * rnorm(n)
 X2c <- scale(X2, center = TRUE, scale = FALSE)
 CovX2 <- cov(X2c)
@@ -196,30 +196,88 @@ e2 <- eigen(CovX2)
 lambda2 <- e2$values
 Q2 <- e2$vectors
 kap <- kappa(CovX2, exact = TRUE)
+
+print(lambda2)
+print(kap)
 ```
 
-• the eigenvalues of S;
+* The eigenvalues of S
 
-• kappa(S);
+The eigenvalues are $9.68, 5.36, 1.50, 1.26$ and $3.5e-15$. The first four are of normal size. The fifth is almost zero. 
+For a symmetric matrix such as $S$, the absolute error of a computed eigenvalue is of the order $\varepsilon \lambda_{\max} \approx 2 \cdot 10^{-15}$, which is the size of the smallest eigenvalue here.
 
-• the three whitening transformations;
+* kappa(S)
 
-• the covariance matrices after whitening.
+The condition number `kappa(S)`is the ratio of the largest to the smallest eigenvalue. Here the value is $3.0 \cdot 10^{15}$.
+The plain ratio $9.68 / 3.5 \cdot 10^{-15}$ gives about $2.7 \cdot 10^{15}$. The two values differ because the smallest eigenvalue is only known up to rounding error, so only the order of magnitude, $10^{15}$, is meaningful.
+$S$ is numerically almost singular: its smallest eigenvalue $3.5 \cdot 10^{-15}$ is of the same size as the rounding error $\varepsilon \lambda_{\max} \approx 2 \cdot 10^{-15}$ and cannot be distinguished from zero.
 
-What numerical difficulties do you observe?
+* The three whitening transformations;
 
-```{r collinear-whitening, warning = FALSE}
+```{r collinear whitening}
+# PCA and ZCA whitening matrices
 W2 <- list(
   PCA = diag(1 / sqrt(lambda2)) %*% t(Q2),
   ZCA = Q2 %*% diag(1 / sqrt(lambda2)) %*% t(Q2)
 )
 
-ch <- tryCatch(chol(S2), error = function(e) NULL)
-if (!is.null(ch)) W2$Cholesky <- solve(t(ch))
+# whitening matrices
+round(W2$PCA, 2)
+round(W2$ZCA, 2)
 
-is.null(ch)
-sapply(W2, function(W) max(abs(cov(X2c %*% t(W)) - diag(p))))
+# Cholesky whitening matrix
+# chol() fails if CovX2 is not numerically positive definite
+U2 <- tryCatch(chol(CovX2), error = function(e) NULL)
+is.null(U2)
+
+L2 <- t(U2)
+W2_chol <- solve(L2)
+
+# Whitened data
+Z2_chol <- X2c %*% t(W2_chol)
 ```
+
+These are the same formulas as before, now applied to `CovX2` with `lambda2` and `Q2`.
+The whitening matrices show where the problem comes from. The last row of $W_\text{PCA}$ has entries of about $\pm 1.2 \cdot 10^{7}$ for $X_1$ and $X_5$, so the fifth whitened coordinate is $1.2 \cdot 10^{7} (X_1 - X_5)$, the noise of size $10^{-7}$ scaled up to variance 1. The two entries agree in all but the last digits, so the result depends on the difference of two almost equal numbers. 
+In $W_\text{ZCA}$ the same direction dominates the first and fifth rows (entries $\pm 8.4 \cdot 10^{6}$), so the whitened variables are no longer close to the original ones.
+
+**2. The Cholesky matrix**
+
+`chol(CovX2)` needs `CovX2` to be positive definite, and the last pivot is almost zero. Two things can happen. The call can stop with an error ("leading minor of order 5 is not positive"), and `tryCatch` turns that into `NULL`. Or it returns a factor whose last diagonal entry is tiny. In that case `solve(t(ch))` produces a `W` with huge entries in the last row. `if (!is.null(ch))` adds the matrix to the list only when `chol` succeeded.
+
+**3. `is.null(ch)`**
+
+This tells you which case you are in. `TRUE` means `chol` failed.
+
+**4. The check with `sapply`**
+
+For each `W` it whitens the data (`X2c %*% t(W)`), computes the covariance and prints the largest deviation from the identity. For a good whitening this is about `1e-15`. Here the error should be much larger, since errors of about `kappa · eps ≈ 0.7` are possible, and PCA, ZCA and Cholesky may differ in how bad it is. A `NaN` would mean a negative eigenvalue.
+
+Run the chunk and paste the output (`is.null(ch)` and the three numbers). Then we can read off which method fails and how badly, and I'll help you write the answer to "What numerical difficulties do you observe?" from your actual values.
+
+
+* The covariance matrices after whitening.
+
+```{r collinear whitening}
+cov2 <- lapply(Z2, cov)
+
+# Sample covariance of the whitened data with Cholesky whitening
+cov2_chol <- cov(Z2_chol)
+round(cov2_chol, 2) # Rounded for better readability
+
+# should be the identity if whitening worked
+lapply(cov2, round, 2)
+```
+
+In all three cases the first four whitened coordinates have variance 1 and only the direction of the noise $X_1 - X_5$ is wrong. Its variance is 1.34 for PCA and 1.64 for Cholesky, and for ZCA the error appears as variances of 1.17 and a covariance of $-0.17$ between $X_1$ and $X_5$. The Cholesky factorization did not fail, but its last pivot is just as inaccurate as the smallest eigenvalue, so it does not give unit variance either.
+
+* What numerical difficulties do you observe?
+
+These problems are not underflow or overflow, since all numbers stay far inside the range of double precision. They are caused by cancellation: $S$ is numerically almost singular ($\kappa \approx 3 \cdot 10^{15}$), so rounding errors of the size of the smallest eigenvalue are amplified by the division by $\sqrt{\lambda_{\min}}$, and the whitening matrices contain differences of nearly equal numbers.
+
+The fifth variable is almost a copy of the first, so $S$ is numerically almost singular. Its smallest eigenvalue is $3.5 \cdot 10^{-15}$, the largest is $9.68$, and $\kappa(S) = 3.0 \cdot 10^{15}$, so about 15 of the roughly 16 digits of double precision are lost. The smallest eigenvalue is of the same size as the rounding error $\varepsilon \lambda_{\max} \approx 2 \cdot 10^{-15}$ and is therefore known only up to rounding error.
+
+Whitening divides by $\sqrt{\lambda_{\min}} \approx 6 \cdot 10^{-8}$, which scales the noise direction $X_5 - X_1$ up by about $10^7$. The error in $\lambda_{\min}$ goes straight into the result. With PCA, four components have variance 1, but the fifth has variance 1.34. With ZCA the same error is rotated back into the original coordinates, so the variances of $X_1$ and $X_5$ are 1.17 and their covariance is $-0.17$. The whitened data is then no longer uncorrelated with unit variance.
 
 The smallest eigenvalue is `r signif(min(lambda2), 3)` and
 `kappa(S)` is `r signif(kap, 3)`. In theory the smallest eigenvalue is about
@@ -229,75 +287,7 @@ errors in the eigenvalues are of size `eps * lambda_max`, here
 eigenvalue and its eigenvector are therefore barely determined by the data in
 floating point, and the eigenvalue could even come out slightly negative.
 
-Both PCA and ZCA divide by `sqrt(lambda_min)`, which blows up this direction
-and its rounding error. The last table shows how far each result is from the
-identity. For Cholesky the last pivot is almost zero. Whether `chol()` stops
-with a "not positive definite" error or returns a factor with a tiny last
-pivot is shown by `is.null(ch)` above.
-
-
-
-
-
-
-
-
-
-## Task 6: Orthogonal transformations of `W`
-
-Let `W S W^T = I` and let `R` be orthogonal, `R R^T = R^T R = I`. Then
-
-$$
-(RW) \, S \, (RW)^\top = R \, (W S W^\top) \, R^\top = R R^\top = I_p .
-$$
-
-So `Z* = X (RW)^T` has identity covariance and `RW` is a whitening matrix.
-
-Whitening is not unique because every orthogonal `R` produces one. `W` is
-invertible (from `W S W^T = I`), so `RW = W` only if `R = I`. Rotations by
-arbitrary angles give infinitely many different matrices `RW`.
-
-The converse also holds. From `W S W^T = I` we get `W^T W = S^{-1}`. If `W_1`
-and `W_2` are both whitening matrices, `R = W_2 W_1^{-1}` satisfies
-`R R^T = W_2 (W_1^T W_1)^{-1} W_2^T = W_2 S W_2^T = I`. Hence all whitening
-matrices have the form `R S^{-1/2}`. PCA, ZCA and Cholesky are three
-different choices of `R`.
-
-```{r orthogonal}
-R_chol <- W_chol %*% solve(W_zca)
-max(abs(crossprod(R_chol) - diag(p)))
-
-R_rand <- qr.Q(qr(matrix(rnorm(p * p), p, p)))
-check(Xc %*% t(R_rand %*% W_zca))
-```
-
-
-```{r collinear-whitening, warning = FALSE}
-W2 <- list(
-  PCA = diag(1 / sqrt(lambda2)) %*% t(Q2),
-  ZCA = Q2 %*% diag(1 / sqrt(lambda2)) %*% t(Q2)
-)
-
-ch <- tryCatch(chol(S2), error = function(e) NULL)
-if (!is.null(ch)) W2$Cholesky <- solve(t(ch))
-
-is.null(ch)
-sapply(W2, function(W) max(abs(cov(X2c %*% t(W)) - diag(p))))
-```
-
-The smallest eigenvalue is `r signif(min(lambda2), 3)` and
-`kappa(S)` is `r signif(kap, 3)`. In theory the smallest eigenvalue is about
-`1e-14 / 2`, the variance of the direction `(X_5 - X_1) / sqrt(2)`. Rounding
-errors in the eigenvalues are of size `eps * lambda_max`, here
-`r signif(rounding, 3)`, which is the same order of magnitude. The smallest
-eigenvalue and its eigenvector are therefore barely determined by the data in
-floating point, and the eigenvalue could even come out slightly negative.
-
-Both PCA and ZCA divide by `sqrt(lambda_min)`, which blows up this direction
-and its rounding error. The last table shows how far each result is from the
-identity. For Cholesky the last pivot is almost zero. Whether `chol()` stops
-with a "not positive definite" error or returns a factor with a tiny last
-pivot is shown by `is.null(ch)` above.
+Both PCA and ZCA divide by `sqrt(lambda_min)`, which blows up this direction and its rounding error.
 
 ## Task 8: Eigenvalue (numerically) zero
 
