@@ -1,5 +1,5 @@
 ---
-title: "Exercises 1–5 — Statistical Simulation and Computer-Intensive Methods"
+title: "1. Assignment: Exercises 1–5 — Statistical Simulation and Computer-Intensive Methods"
 date: "`r Sys.Date()`"
 author: "Lennart Bethke"
 output:
@@ -468,7 +468,8 @@ and multiply the result by $n/(n-1)$ as sample correction, so that it is compara
 mean_X <- colMeans(X)
 
 # One-pass covariance with sample correction
-one_pass_cov <- (crossprod(X) / n - tcrossprod(mean_X)) * n / (n - 1) # crossprod(X)/n is E(x_i x_j) and tcrossprod(m) is E(x_i)E(x_j)
+# Crossprod(X)/n is E(x_i x_j) and tcrossprod(m) is E(x_i)E(x_j)
+one_pass_cov <- (crossprod(X) / n - tcrossprod(mean_X)) * n / (n - 1)
 
 # `digits = 15`
 print(one_pass_cov, digits = 15)
@@ -478,7 +479,7 @@ Here `crossprod(X) / n` gives $E(x_i x_j)$ for all pairs of columns and `tcrossp
 
 The entries range from about `14` to `50` instead of `1.013`. 
 
-## Compare the resulting covariance matrix with cov(X)
+## Compare the resulting covariance matrix with Cov(X)
 
 Here we compare the `covariance matrix` using the `algebraic one-pass identity` with `cov(X)`.
 
@@ -537,10 +538,10 @@ A matrix $W$ is a whitening matrix if the transformed observations have identity
 
 $$ Z = X W^\top, \qquad \operatorname{Cov}(Z) = W S W^\top = I_p. $$
 
-The goal of this exercise is to investigate,
+The goal of this exercise is to investigate:
 
-* why whitening is not unique, and 
-* how different matrix decompositions lead to different, but valid, whitening transformations.
+* Why whitening is not unique
+* How different matrix decompositions lead to different, but valid, whitening transformations.
 
 ```{r ex5-setup}
 # Set seed to '42' and generate random sample
@@ -550,7 +551,7 @@ set.seed(42)
 ## Simulate Data
 
 First we simulate `n = 1000` observations from a 5-dimensional multivariate normal distribution with a non-diagonal covariance matrix.
- We construct such data without an additional package by starting with independent standard normal variables and multiplying them by a suitable matrix.
+We construct such data without an additional package by starting with independent standard normal variables and multiplying them by a suitable matrix.
 Finally, we centre the resulting data and inspect its sample covariance matrix `S`.
 
 ```{r ex5-simulate}
