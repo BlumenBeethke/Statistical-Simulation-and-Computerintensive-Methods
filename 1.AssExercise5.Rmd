@@ -235,59 +235,35 @@ W2_chol <- solve(L2)
 
 # Whitened data
 Z2_chol <- X2c %*% t(W2_chol)
+
+# whitening matrix
+round(W2_chol, 2)
 ```
 
 These are the same formulas as before, now applied to `CovX2` with `lambda2` and `Q2`.
-The whitening matrices show where the problem comes from. The last row of $W_\text{PCA}$ has entries of about $\pm 1.2 \cdot 10^{7}$ for $X_1$ and $X_5$, so the fifth whitened coordinate is $1.2 \cdot 10^{7} (X_1 - X_5)$, the noise of size $10^{-7}$ scaled up to variance 1. The two entries agree in all but the last digits, so the result depends on the difference of two almost equal numbers. 
+The whitening matrices show where the problem comes from. The last row of PCA whitening matrix has entries of about $\pm 1.2 \cdot 10^{7}$ for $X_1$ and $X_5$. 
 In $W_\text{ZCA}$ the same direction dominates the first and fifth rows (entries $\pm 8.4 \cdot 10^{6}$), so the whitened variables are no longer close to the original ones.
-
-**2. The Cholesky matrix**
-
-`chol(CovX2)` needs `CovX2` to be positive definite, and the last pivot is almost zero. Two things can happen. The call can stop with an error ("leading minor of order 5 is not positive"), and `tryCatch` turns that into `NULL`. Or it returns a factor whose last diagonal entry is tiny. In that case `solve(t(ch))` produces a `W` with huge entries in the last row. `if (!is.null(ch))` adds the matrix to the list only when `chol` succeeded.
-
-**3. `is.null(ch)`**
-
-This tells you which case you are in. `TRUE` means `chol` failed.
-
-**4. The check with `sapply`**
-
-For each `W` it whitens the data (`X2c %*% t(W)`), computes the covariance and prints the largest deviation from the identity. For a good whitening this is about `1e-15`. Here the error should be much larger, since errors of about `kappa · eps ≈ 0.7` are possible, and PCA, ZCA and Cholesky may differ in how bad it is. A `NaN` would mean a negative eigenvalue.
-
-Run the chunk and paste the output (`is.null(ch)` and the three numbers). Then we can read off which method fails and how badly, and I'll help you write the answer to "What numerical difficulties do you observe?" from your actual values.
-
+The Cholesky whitening matrix is lower triangular. The two large entries are equal up to sign, so this coordinate is again the difference of two almost equal numbers, with the same *cancellation* as for PCA and ZCA. 
 
 * The covariance matrices after whitening.
 
-```{r collinear whitening}
+```{r collinear covariances}
+# Covariance of the whitened data for PCA and ZCA
 cov2 <- lapply(Z2, cov)
 
-# Sample covariance of the whitened data with Cholesky whitening
+# covariance of the whitened data for Cholesky
 cov2_chol <- cov(Z2_chol)
 round(cov2_chol, 2) # Rounded for better readability
 
-# should be the identity if whitening worked
 lapply(cov2, round, 2)
 ```
 
-In all three cases the first four whitened coordinates have variance 1 and only the direction of the noise $X_1 - X_5$ is wrong. Its variance is 1.34 for PCA and 1.64 for Cholesky, and for ZCA the error appears as variances of 1.17 and a covariance of $-0.17$ between $X_1$ and $X_5$. The Cholesky factorization did not fail, but its last pivot is just as inaccurate as the smallest eigenvalue, so it does not give unit variance either.
+In all three cases the error is confined to one direction, the noise $X_1 - X_5$. For PCA and Cholesky it appears in the fifth whitened coordinate, which has variance 1.34 and 1.64 instead of 1, while the other four are correct. 
+For ZCA the first and fifth coordinates both have variance 1.17 instead of 1 and their covariance is $-0.17$ instead of 0.
 
 * What numerical difficulties do you observe?
 
-These problems are not underflow or overflow, since all numbers stay far inside the range of double precision. They are caused by cancellation: $S$ is numerically almost singular ($\kappa \approx 3 \cdot 10^{15}$), so rounding errors of the size of the smallest eigenvalue are amplified by the division by $\sqrt{\lambda_{\min}}$, and the whitening matrices contain differences of nearly equal numbers.
-
-The fifth variable is almost a copy of the first, so $S$ is numerically almost singular. Its smallest eigenvalue is $3.5 \cdot 10^{-15}$, the largest is $9.68$, and $\kappa(S) = 3.0 \cdot 10^{15}$, so about 15 of the roughly 16 digits of double precision are lost. The smallest eigenvalue is of the same size as the rounding error $\varepsilon \lambda_{\max} \approx 2 \cdot 10^{-15}$ and is therefore known only up to rounding error.
-
-Whitening divides by $\sqrt{\lambda_{\min}} \approx 6 \cdot 10^{-8}$, which scales the noise direction $X_5 - X_1$ up by about $10^7$. The error in $\lambda_{\min}$ goes straight into the result. With PCA, four components have variance 1, but the fifth has variance 1.34. With ZCA the same error is rotated back into the original coordinates, so the variances of $X_1$ and $X_5$ are 1.17 and their covariance is $-0.17$. The whitened data is then no longer uncorrelated with unit variance.
-
-The smallest eigenvalue is `r signif(min(lambda2), 3)` and
-`kappa(S)` is `r signif(kap, 3)`. In theory the smallest eigenvalue is about
-`1e-14 / 2`, the variance of the direction `(X_5 - X_1) / sqrt(2)`. Rounding
-errors in the eigenvalues are of size `eps * lambda_max`, here
-`r signif(rounding, 3)`, which is the same order of magnitude. The smallest
-eigenvalue and its eigenvector are therefore barely determined by the data in
-floating point, and the eigenvalue could even come out slightly negative.
-
-Both PCA and ZCA divide by `sqrt(lambda_min)`, which blows up this direction and its rounding error.
+These problems are caused by cancellation: $S$ is numerically almost singular ($\kappa \approx 3 \cdot 10^{15}$), so rounding errors of the size of the smallest eigenvalue are amplified by the division by $\sqrt{\lambda_{\min}}$ and the whitening matrices contain differences of nearly equal numbers.
 
 ## Task 8: Eigenvalue (numerically) zero
 
